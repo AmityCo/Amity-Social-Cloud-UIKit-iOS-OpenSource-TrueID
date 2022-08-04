@@ -26,6 +26,7 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     let fileRepository: AmityFileRepository
     let streamRepository: AmityStreamRepository
     let postRepository: AmityPostRepository
+    let reactionReposity: AmityReactionRepository
     var broadcaster: AmityStreamBroadcaster?
     
     // MARK: - Internal Const Properties
@@ -74,7 +75,12 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     @IBOutlet weak var uiContainerCreate: UIView!
     
     // - uiContainerCreate.topRightStackView
-    @IBOutlet private weak var selectCoverButton: UIButton!
+    @IBOutlet private weak var selectCoverButton: UIButton! {
+        didSet {
+            selectCoverButton.layer.cornerRadius = 5
+            selectCoverButton.setTitle(AmityLocalizedStringSet.LiveStream.Create.selectCover.localizedString, for: .normal)
+        }
+    }
     @IBOutlet private weak var coverImageContainer: UIView!
     @IBOutlet private weak var coverImageView: UIImageView!
     
@@ -91,7 +97,10 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     @IBOutlet weak var streamingContainer: UIView!
     @IBOutlet weak var streamingStatusLabel: UILabel!
     @IBOutlet weak var finishButton: UIButton!
-    
+    @IBOutlet weak var streamingViewerContainer: UIView!
+    @IBOutlet weak var streamingViewerCountLabel: UILabel!
+    @IBOutlet weak var likeCountLabel: UILabel!
+
     // MARK: - UI Container End Components
     @IBOutlet weak var uiContainerEnd: UIView!
     @IBOutlet weak var streamEndActivityIndicator: UIActivityIndicatorView!
@@ -109,6 +118,11 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     var keyboardHeight: CGFloat = 0
     var keyboardObservationTokens: [NSObjectProtocol] = []
     
+    var isClose: Bool = false
+        
+    var streamId: String?
+    var timer = Timer()
+    
     // MARK: - Init / Deinit
     
     public init(client: AmityClient, targetId: String?, targetType: AmityPostTargetType) {
@@ -122,6 +136,7 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         fileRepository = AmityFileRepository(client: client)
         streamRepository = AmityStreamRepository(client: client)
         postRepository = AmityPostRepository(client: client)
+        reactionReposity = AmityReactionRepository(client: client)
         broadcaster = AmityStreamBroadcaster(client: client)
         mentionManager = AmityMentionManager(withType: .post(communityId: targetId))
         
@@ -163,6 +178,7 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         mentionManager.delegate = self
         mentionManager.setFont(AmityFontSet.body, highlightFont: AmityFontSet.bodyBold)
         mentionManager.setColor(.white, highlightColor: .white)
+        getLiveStreamViwerCount()
     }
     
     public override func viewDidAppear(_ animated: Bool) {
@@ -185,6 +201,11 @@ final public class LiveStreamBroadcastViewController: UIViewController {
             presentPermissionRequiredDialogue()
         }
         
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+    
+    public override func viewDidDisappear(_ animated: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = false
     }
     
     public override func viewDidLayoutSubviews() {
@@ -193,6 +214,28 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     }
     
     // MARK: - Internal Functions
+    
+    /// Call function get reaction count
+    func getLikeCount() {
+        guard let postId = createdPost?.postId else { return }
+        liveObjectQueryToken = postRepository.getPostForPostId(postId).observe { liveObject, error in
+            guard let post = liveObject.object else { return }
+            self.likeCountLabel.text = String(post.reactionsCount)
+        }
+    }
+    
+    /// Call function Timer With Interval
+    func getLiveStreamViwerCount() {
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: {_ in
+            self.getLikeCount()
+            customAPIRequest.getLiveStreamViewerData(page_number: 1, liveStreamId: self.streamId ?? "", type: "watching") { value in
+                DispatchQueue.main.async {
+                    self.streamingViewerCountLabel.text = String(value.count.formatUsingAbbrevation())
+                }
+            }
+        })
+    }
     
     /// goLiveButtomSpace will change base on keyboard frame.
     func updateUIBaseOnKeyboardFrame() {
@@ -238,6 +281,8 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         titleTextField.maxLength = 30
         titleTextField.font = AmityFontSet.headerLine
         titleTextField.textColor = .white
+        titleTextField.attributedPlaceholder =
+        NSAttributedString(string: AmityLocalizedStringSet.LiveStream.Create.title.localizedString, attributes: [NSAttributedString.Key.foregroundColor: UIColor.white])
         titleTextField.returnKeyType = .done
         titleTextField.delegate = self
         
@@ -245,7 +290,7 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         descriptionTextView.padding = .zero
         descriptionTextView.backgroundColor = .clear
         descriptionTextView.font = AmityFontSet.body
-        descriptionTextView.placeholder = "Tap to add post description..."
+        descriptionTextView.placeholder = AmityLocalizedStringSet.LiveStream.Create.description.localizedString
         descriptionTextView.textColor = .white
         descriptionTextView.returnKeyType = .done
         descriptionTextView.customTextViewDelegate = self
@@ -255,7 +300,7 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         textViewToolbar.barStyle = .default
         textViewToolbar.items = [
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: self, action: nil),
-            UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(cancelInput))
+            UIBarButtonItem(title: AmityLocalizedStringSet.General.done.localizedString, style: .done, target: self, action: #selector(cancelInput))
         ]
         textViewToolbar.sizeToFit()
         descriptionTextView.inputAccessoryView = textViewToolbar
@@ -270,28 +315,36 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         goLiveButton.layer.cornerRadius = 4
         goLiveButton.layer.borderWidth = 1
         goLiveButton.layer.borderColor = UIColor(red: 0.647, green: 0.663, blue: 0.71, alpha: 1).cgColor
-        goLiveButton.setAttributedTitle(NSAttributedString(string: "Go live", attributes: [
+        goLiveButton.setAttributedTitle(NSAttributedString(string: AmityLocalizedStringSet.LiveStream.Create.goLive.localizedString, attributes: [
             .foregroundColor: UIColor.black,
             .font: AmityFontSet.bodyBold
         ]), for: .normal)
         
-        finishButton.backgroundColor = .black
-        finishButton.setAttributedTitle(NSAttributedString(string: "Finish", attributes: [
-            .foregroundColor: UIColor.white,
-            .font: AmityFontSet.bodyBold
-        ]), for: .normal)
-        finishButton.setTitleColor(.white, for: .normal)
-        finishButton.clipsToBounds = true
-        finishButton.layer.cornerRadius = 4
-        finishButton.layer.borderColor = UIColor.white.cgColor
-        finishButton.layer.borderWidth = 1
+//        finishButton.backgroundColor = .black
+//        finishButton.setAttributedTitle(NSAttributedString(string: AmityLocalizedStringSet.LiveStream.Live.finish.localizedString, attributes: [
+//            .foregroundColor: UIColor.white,
+//            .font: AmityFontSet.bodyBold
+//        ]), for: .normal)
+//        finishButton.setTitleColor(.white, for: .normal)
+//        finishButton.clipsToBounds = true
+//        finishButton.layer.cornerRadius = 4
+//        finishButton.layer.borderColor = UIColor.white.cgColor
+//        finishButton.layer.borderWidth = 1
         
         streamingContainer.clipsToBounds = true
         streamingContainer.layer.cornerRadius = 4
         streamingContainer.backgroundColor = UIColor(red: 1, green: 0.188, blue: 0.353, alpha: 1)
         streamingStatusLabel.textColor = .white
         streamingStatusLabel.font = AmityFontSet.captionBold
+        
+        streamingViewerContainer.clipsToBounds = true
+        streamingViewerContainer.layer.cornerRadius = 4
+        streamingViewerContainer.backgroundColor = UIColor(red: 1, green: 1, blue: 1, alpha: 0.2)
+        streamingViewerCountLabel.textColor = .white
+        streamingViewerCountLabel.font = AmityFontSet.captionBold
         setupMentionTableView()
+        
+        streamEndLabel.text = AmityLocalizedStringSet.LiveStream.Live.endingLiveStream.localizedString
     }
     
     private func trySetupBroadcaster() {
@@ -349,12 +402,13 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     }
     
     private func presentEndLiveStreamConfirmationDialogue() {
-        let title = "Do yo want to end the live stream?"
-        let alertController = UIAlertController(title: title, message: nil, preferredStyle: .alert)
-        let end = UIAlertAction(title: "End", style: .default) { [weak self] action in
+        let title = AmityLocalizedStringSet.LiveStream.Live.titleStopLive.localizedString
+        let alertController = UIAlertController(title: title, message: AmityLocalizedStringSet.LiveStream.Live.descriptionStopLive.localizedString, preferredStyle: .alert)
+        let end = UIAlertAction(title: AmityLocalizedStringSet.LiveStream.Live.stopLive.localizedString, style: .default) { [weak self] action in
             self?.finishLive()
+            self?.timer.invalidate()
         }
-        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        let cancel = UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil)
         alertController.addAction(end)
         alertController.addAction(cancel)
         present(alertController, animated: true, completion: nil)
@@ -387,10 +441,17 @@ final public class LiveStreamBroadcastViewController: UIViewController {
     }
     
     @IBAction private func selectCoverButtonDidTouch() {
-        presentCoverImagePicker()
+        checkPhotoLibraryPermission {
+            DispatchQueue.main.async { [weak self] in
+                self?.presentCoverImagePicker()
+            }
+        } fail: {
+            self.alertPhotoPermision()
+        }
     }
     
     @IBAction private func closeButtonDidTouch() {
+        timer.invalidate()
         dismiss(animated: true, completion: nil)
     }
     
@@ -399,13 +460,30 @@ final public class LiveStreamBroadcastViewController: UIViewController {
         let metadata = mentionManager.getMetadata(shift: titleCount)
         let mentionees = mentionManager.getMentionees()
         
-        mentionManager.resetState()
-        
-        goLive(metadata: metadata, mentionees: mentionees)
+        if !permissionsGoliveNotDetermined() {
+            requestPermissions { [weak self] granted in
+                if granted {
+                    self?.trySetupBroadcaster()
+                    self?.mentionManager.resetState()
+                    self?.goLive(metadata: metadata, mentionees: mentionees)
+                } else {
+                    self?.presentPermissionRequiredDialogue()
+                }
+            }
+        } else {
+            trySetupBroadcaster()
+            mentionManager.resetState()
+            goLive(metadata: metadata, mentionees: mentionees)
+        }
     }
     
     @IBAction func finishButtonDidTouch() {
         presentEndLiveStreamConfirmationDialogue()
+    }
+    
+    @IBAction func shareButtonDidTouch() {
+        guard  let post = createdPost else { return }
+        AmityEventHandler.shared.shareCommunityPostDidTap(from: self, title: nil, postId: post.postId, communityId: post.targetCommunity?.communityId ?? "")
     }
     
 }
@@ -466,6 +544,7 @@ extension LiveStreamBroadcastViewController: AmityMentionManagerDelegate {
             mentionTableView.isHidden = false
             mentionTableView.reloadData()
         }
+//        mentionTableView.isHidden = true
     }
     
     public func didCreateAttributedString(attributedString: NSAttributedString) {
@@ -522,5 +601,40 @@ extension LiveStreamBroadcastViewController: UITableViewDelegate {
         if tableView.isBottomReached {
             mentionManager.loadMore()
         }
+    }
+}
+
+extension Int {
+    
+    func formatUsingAbbrevation () -> String {
+        let numFormatter = NumberFormatter()
+        
+        typealias Abbrevation = (threshold:Double, divisor:Double, suffix:String)
+        let abbreviations:[Abbrevation] = [(0, 1, ""),
+                                           (1000.0, 1000.0, "K"),
+                                           (100_000.0, 1_000_000.0, "M"),
+                                           (100_000_000.0, 1_000_000_000.0, "B")]
+        // you can add more !
+        let startValue = Double (abs(self))
+        let abbreviation:Abbrevation = {
+            var prevAbbreviation = abbreviations[0]
+            for tmpAbbreviation in abbreviations {
+                if (startValue < tmpAbbreviation.threshold) {
+                    break
+                }
+                prevAbbreviation = tmpAbbreviation
+            }
+            return prevAbbreviation
+        } ()
+        
+        let value = Double(self) / abbreviation.divisor
+        numFormatter.positiveSuffix = abbreviation.suffix
+        numFormatter.negativeSuffix = abbreviation.suffix
+        numFormatter.allowsFloats = true
+        numFormatter.minimumIntegerDigits = 1
+        numFormatter.minimumFractionDigits = 0
+        numFormatter.maximumFractionDigits = 1
+        
+        return numFormatter.string(from: NSNumber (value:value))!
     }
 }

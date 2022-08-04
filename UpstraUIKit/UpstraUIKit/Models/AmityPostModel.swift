@@ -67,11 +67,13 @@ extension AmityPostModel {
     
     public class Author {
         public let avatarURL: String?
+        public let customAvatarURL: String?
         public let displayName: String?
         public let isGlobalBan: Bool
         
-        public init( avatarURL: String?, displayName: String?, isGlobalBan: Bool) {
+        public init( avatarURL: String?, customAvatarURL: String?, displayName: String?, isGlobalBan: Bool) {
             self.avatarURL = avatarURL
+            self.customAvatarURL = customAvatarURL
             self.displayName = displayName
             self.isGlobalBan = isGlobalBan
         }
@@ -142,7 +144,7 @@ public class AmityPostModel {
     /**
      * The unique identifier for the post
      */
-    public let postId: String
+    public var postId: String
     
     /**
      * The unique identifier for the post user id
@@ -261,18 +263,20 @@ public class AmityPostModel {
     
     public var poll: Poll?
     
+    public var isPin: Bool = false
+    
     // MARK: - Internal variables
     
     var dataTypeInternal: DataType = .unknown
     var isModerator: Bool = false
     let parentPostId: String?
-    let latestComments: [AmityCommentModel]
+    var latestComments: [AmityCommentModel]
     let postAsModerator: Bool = false
     private(set) var text: String = ""
     private(set) var medias: [AmityMedia] = []
     private(set) var files: [AmityFile] = []
     private(set) var liveStream: AmityStream?
-    private let post: AmityPost
+    public let post: AmityPost
     private let childrenPosts: [AmityPost]
     
     // Maps fileId to PostId for child post
@@ -280,6 +284,12 @@ public class AmityPostModel {
     
     var isLiked: Bool {
         return myReactions.contains(.like)
+    }
+    
+    public var isOpenPageByDetail:Bool = false
+    
+    var communityId: String? {
+        return post.targetCommunity?.communityId
     }
     
     private(set) var feedType: AmityFeedType = .published
@@ -297,6 +307,7 @@ public class AmityPostModel {
         parentPostId = post.parentPostId
         postedUser = Author(
             avatarURL: post.postedUser?.getAvatarInfo()?.fileURL,
+            customAvatarURL: post.postedUser?.avatarCustomUrl,
             displayName: post.postedUser?.displayName ?? AmityLocalizedStringSet.General.anonymous.localizedString, isGlobalBan: post.postedUser?.isGlobalBan ?? false)
         subtitle = post.isEdited ? String.localizedStringWithFormat(AmityLocalizedStringSet.PostDetail.postDetailCommentEdit.localizedString, post.createdAt.relativeTime) : post.createdAt.relativeTime
         postedUserId = post.postedUserId

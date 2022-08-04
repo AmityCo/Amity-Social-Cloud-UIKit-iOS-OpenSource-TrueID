@@ -8,7 +8,7 @@
 
 import UIKit
 
-extension String {
+public extension String {
     /// Apply to bold text
     /// - Parameters:
     ///   - listString: List string for make to bold
@@ -26,8 +26,29 @@ extension String {
         return boldString
     }
     
-    public var localizedString: String {
-            return NSLocalizedString(self, tableName: "AmityLocalizable", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+    var localizedString: String {
+        switch AmityUIKitManagerInternal.shared.amityLanguage {
+        case "th":
+            return NSLocalizedString(self, tableName: "LocalizedThai", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "id":
+            return NSLocalizedString(self, tableName: "LocalizedIndonesia", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "km":
+            return NSLocalizedString(self, tableName: "LocalizedCambodia", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "fil":
+            return NSLocalizedString(self, tableName: "LocalizedPhilippin", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "vi":
+            return NSLocalizedString(self, tableName: "LocalizedVietnam", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "my":
+            return NSLocalizedString(self, tableName: "LocalizedMyanmar", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        case "en":
+            return NSLocalizedString(self, tableName: "LocalizedEnglish", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        default:
+            return NSLocalizedString(self, tableName: "LocalizedEnglish", bundle: AmityUIKitManager.bundle, value: "", comment: "")
+        }
+    }
+    
+    var getLocalizedStringEN: String {
+        return NSLocalizedString(self, tableName: "LocalizedEnglish", bundle: AmityUIKitManager.bundle, value: "", comment: "")
     }
     
     public func height(withConstrainedWidth width: CGFloat, font: UIFont) -> CGFloat {

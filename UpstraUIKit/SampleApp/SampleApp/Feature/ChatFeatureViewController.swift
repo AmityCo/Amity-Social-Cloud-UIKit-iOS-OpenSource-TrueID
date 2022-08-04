@@ -10,14 +10,6 @@ import UIKit
 import AmityUIKit
 import AmitySDK
 
-class ChatFeatureSetting {
-    
-    static let shared = ChatFeatureSetting()
-    var iscustomMessageEnabled: Bool = false
-    
-    private init() { }
-}
-
 class ChatFeatureViewController: UIViewController {
     
     enum FeatureList: CaseIterable {
@@ -25,6 +17,7 @@ class ChatFeatureViewController: UIViewController {
         case chatList
         case chatListCustomize
         case messageListWithTextOnlyKeyboard
+        case createFromContact
 
         var text: String {
             switch self {
@@ -36,6 +29,8 @@ class ChatFeatureViewController: UIViewController {
                 return "Chat List with customization"
             case .messageListWithTextOnlyKeyboard:
                 return "Message List with text only keyboard"
+            case .createFromContact:
+                return "Create chat from contact"
             }
         }
         
@@ -77,11 +72,10 @@ class ChatFeatureViewController: UIViewController {
     }
     
     private func presentChat(channelId: String) {
-        ChatFeatureSetting.shared.iscustomMessageEnabled = true
-        
         var settings = AmityMessageListViewController.Settings()
         settings.composeBarStyle = .textOnly
         let vc = AmityMessageListViewController.make(channelId: channelId, settings: settings)
+        vc.dataSource = self
         navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -110,19 +104,27 @@ extension ChatFeatureViewController: UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         switch FeatureList.allCases[indexPath.row] {
         case .chatHome:
-            ChatFeatureSetting.shared.iscustomMessageEnabled = false
             let vc = AmityChatHomePageViewController.make()
             navigationController?.pushViewController(vc, animated: true)
         case .chatList:
-            ChatFeatureSetting.shared.iscustomMessageEnabled = false
-            let vc = AmityRecentChatViewController.make(channelType: .community)
+            let vc = AmityRecentChatViewController.make(channelType: .conversation)
             navigationController?.pushViewController(vc, animated: true)
         case .chatListCustomize:
-            ChatFeatureSetting.shared.iscustomMessageEnabled = true
-            let vc = AmityRecentChatViewController.make(channelType: .community)
+            let vc = AmityChatHomePageViewController.make()
             navigationController?.pushViewController(vc, animated: true)
         case .messageListWithTextOnlyKeyboard:
             presentSpecificChatDialogue()
+        case .createFromContact:
+            let user = TrueUser(userId: "Mono29")
+            AmityCreateChannelHandler.shared.createChatFromContactPage(trueUser: user) { result in
+                switch result {
+                case .success(let channelId):
+                    let vc = AmityMessageListViewController.make(channelId: channelId)
+                    self.navigationController?.pushViewController(vc, animated: true)
+                case .failure(let error):
+                    print("Error from create channel: \(error.localizedDescription)")
+                }
+            }
         }
     }
 }
@@ -136,5 +138,13 @@ extension ChatFeatureViewController: UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CellID", for: indexPath)
         cell.textLabel?.text = FeatureList.allCases[indexPath.row].text
         return cell
+    }
+}
+
+extension ChatFeatureViewController: AmityMessageListDataSource {
+    func cellForMessageTypes() -> [AmityMessageTypes : AmityMessageCellProtocol.Type] {
+        return [
+            .textIncoming: CustomMessageTextIncomingTableViewCell.self
+        ]
     }
 }

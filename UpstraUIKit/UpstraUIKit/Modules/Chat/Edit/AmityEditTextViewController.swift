@@ -242,6 +242,7 @@ extension AmityEditTextViewController: AmityMentionManagerDelegate {
             mentionTableView.isHidden = false
             mentionTableView.reloadData()
         }
+//        mentionTableView.isHidden = true
     }
     
     public func didMentionsReachToMaximumLimit() {
@@ -254,4 +255,34 @@ extension AmityEditTextViewController: AmityMentionManagerDelegate {
     public func didCharactersReachToMaximumLimit() {
         showAlertForMaximumCharacters()
     }
+}
+
+// MARK: handle popup
+extension AmityEditTextViewController {
+    
+    func handleCreatePostError(_ error: AmityError) {
+        switch error {
+        case .bannedWord:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageCommentBanword.localizedString
+            let title = AmityLocalizedStringSet.ErrorHandling.errorMessageTitle.localizedString
+            showError(title: title, message: message)
+        case .linkNotAllowed:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageLinkNotAllowedDetail.localizedString
+            let title = AmityLocalizedStringSet.ErrorHandling.errorMessageLinkNotAllowed.localizedString
+            showError(title: title, message: message)
+        case .userIsBanned, .userIsGlobalBanned:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageUserIsBanned.localizedString
+            showError(title: "", message: message)
+        default:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageDefault.localizedString + " (\(error.rawValue))"
+            showError(title: "", message: message)
+        }
+    }
+    
+    private func showError(title: String, message: String) {
+        AmityUtilities.showAlert(title: title, message: message, viewController: self) { _ in
+            
+        }
+    }
+    
 }

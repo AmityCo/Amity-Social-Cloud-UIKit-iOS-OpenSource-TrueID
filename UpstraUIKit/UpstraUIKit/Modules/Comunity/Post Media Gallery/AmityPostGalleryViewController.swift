@@ -21,6 +21,12 @@ public class AmityPostGalleryViewController: AmityViewController {
     
     private var currentSection: PostGallerySegmentedControlCell.Section?
     
+    private let createPostButton: AmityFloatingButton = AmityFloatingButton()
+    var isHiddenButtonCreate: Bool = true
+    
+    @IBOutlet weak var marginRight: NSLayoutConstraint!
+    @IBOutlet weak var marginLeft: NSLayoutConstraint!
+    
     @IBOutlet private weak var collectionView: UICollectionView!
     
     enum C {
@@ -31,6 +37,7 @@ public class AmityPostGalleryViewController: AmityViewController {
     public override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupPostButton()
         screenViewModel.delegate = self
         // Start with .image section
         switchTo(.image)
@@ -48,6 +55,25 @@ public class AmityPostGalleryViewController: AmityViewController {
         collectionView.register(PostGalleryEmptyStateCell.self)
         collectionView.dataSource = self
         collectionView.delegate = self
+        
+    }
+    
+    private func setupPostButton() {
+        createPostButton.image = AmityIconSet.iconCreatePost
+        createPostButton.add(to: view, position: .bottomRight)
+        createPostButton.actionHandler = { [weak self] button in
+            guard let strongSelf = self else { return }
+            AmityEventHandler.shared.createPostDidTap(from: strongSelf, postTarget: .myFeed, openByProfileTrueID: true)
+        }
+        
+        if !isHiddenButtonCreate {
+            marginLeft.constant = 0
+            marginRight.constant = 0
+            self.view.layoutIfNeeded()
+        }
+        
+        createPostButton.isHidden = isHiddenButtonCreate
+        
     }
     
     private func presentPhotoViewer(referenceView: UIImageView, media: AmityMedia) {
@@ -87,6 +113,28 @@ public class AmityPostGalleryViewController: AmityViewController {
         screenViewModel.action.switchPostsQuery(to: queryOptions)
     }
     
+    public func reloadDataImage() {
+        let filterPostTypes: Set<String>?
+        switch currentSection {
+        case .image:
+            filterPostTypes = ["image"]
+        case .video:
+            filterPostTypes = ["video"]
+        case .livestream:
+            filterPostTypes = ["liveStream"]
+        case .none:
+            filterPostTypes = ["image"]
+        }
+        let queryOptions = AmityPostQueryOptions(
+            targetType: targetType,
+            targetId: targetId,
+            sortBy: .lastCreated,
+            deletedOption: .notDeleted,
+            filterPostTypes: filterPostTypes
+        )
+        screenViewModel.action.switchPostsQuery(to: queryOptions)
+    }
+    
     public static func make(
         targetType: AmityPostTargetType,
         targetId: String
@@ -98,12 +146,29 @@ public class AmityPostGalleryViewController: AmityViewController {
         screenViewModel.setup(
             postRepository: AmityPostRepository(client: AmityUIKitManagerInternal.shared.client)
         )
-        
         vc.screenViewModel = screenViewModel
         vc.targetType = targetType
         vc.targetId = targetId
         
         return vc
+    }
+    
+    public static func makeByTrueID(
+        targetType: AmityPostTargetType,
+        targetId: String,
+        isHiddenButtonCreate: Bool) -> AmityPostGalleryViewController {
+            
+            let vc = AmityPostGalleryViewController(nibName: AmityPostGalleryViewController.identifier, bundle: AmityUIKitManager.bundle)
+            
+            let screenViewModel = AmityPostGalleryScreenViewModel()
+            screenViewModel.setup(
+                postRepository: AmityPostRepository(client: AmityUIKitManagerInternal.shared.client)
+            )
+            vc.screenViewModel = screenViewModel
+            vc.targetType = targetType
+            vc.targetId = targetId
+            vc.isHiddenButtonCreate = isHiddenButtonCreate
+            return vc
     }
 
 }
@@ -137,6 +202,22 @@ extension AmityPostGalleryViewController: UICollectionViewDataSource {
     }
     
 }
+
+extension AmityPostGalleryViewController {
+    
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        AmityEventHandler.shared.galleryDidScroll(scrollView)
+        
+        let height = scrollView.frame.size.height
+        let contentYoffset = scrollView.contentOffset.y
+        let distanceFromBottom = scrollView.contentSize.height - contentYoffset
+        if distanceFromBottom < height {
+            screenViewModel.action.loadMore()
+        }
+    }
+}
+
+
 
 extension AmityPostGalleryViewController: UICollectionViewDelegateFlowLayout {
     
@@ -219,25 +300,27 @@ extension AmityPostGalleryViewController: UICollectionViewDelegateFlowLayout {
         case .post(let postObject):
             switch postObject.dataType {
             case "video":
-                if let originalVideo = postObject.getVideoInfo(for: .original),
-                   let url = URL(string: originalVideo.fileURL ) {
-                    presentVideoPlayer(at: url)
-                } else {
-                    print("unable to find video url for post: \(postObject.postId)")
-                }
+//                if let originalVideo = postObject.getVideoInfo(for: .original),
+//                   let url = URL(string: originalVideo.fileURL ) {
+//                    presentVideoPlayer(at: url)
+//                } else {
+//                    print("unable to find video url for post: \(postObject.postId)")
+//                }
+                AmityEventHandler.shared.postDidtap(from: self, postId: postObject.parentPostId ?? "")
             case "image":
-                if let imageData = postObject.getImageInfo() {
-                    let placeholder = AmityColorSet.base.blend(.shade4).asImage()
-                    let itemCell = collectionView.cellForItem(at: indexPath) as! PostGalleryItemCell
-                    let state = AmityMediaState.downloadableImage(imageData: imageData, placeholder: placeholder)
-                    let media = AmityMedia(state: state, type: .image)
-                    presentPhotoViewer(
-                        referenceView: itemCell.imageView,
-                        media: media
-                    )
-                } else {
-                    print("unable to find image url for post: \(postObject.postId)")
-                }
+//                if let imageInfo = postObject.getImageInfo() {
+//                    let placeholder = AmityColorSet.base.blend(.shade4).asImage()
+//                    let itemCell = collectionView.cellForItem(at: indexPath) as! PostGalleryItemCell
+//                    let state = AmityMediaState.downloadableImage(fileURL: imageInfo.fileURL, placeholder: placeholder)
+//                    let media = AmityMedia(state: state, type: .image)
+//                    presentPhotoViewer(
+//                        referenceView: itemCell.imageView,
+//                        media: media
+//                    )
+//                } else {
+//                    print("unable to find image url for post: \(postObject.postId)")
+//                }
+                AmityEventHandler.shared.postDidtap(from: self, postId: postObject.parentPostId ?? "")
             case "liveStream":
                 guard let stream = postObject.getLiveStreamInfo() else {
                     print("unable to find stream for post: \(postObject.postId)")
@@ -258,7 +341,8 @@ extension AmityPostGalleryViewController: UICollectionViewDelegateFlowLayout {
                     AmityEventHandler.shared.openLiveStreamPlayer(
                         from: self,
                         postId: postObject.postId,
-                        streamId: stream.streamId
+                        streamId: stream.streamId,
+                        post: postObject
                     )
                 case .ended, .idle:
                     break

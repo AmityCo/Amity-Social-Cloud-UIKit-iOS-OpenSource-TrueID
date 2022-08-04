@@ -86,6 +86,12 @@ final public class AmityMyCommunityPreviewViewController: UIViewController {
         actionButton.tintColor = AmityColorSet.base
         separatorView.backgroundColor = AmityColorSet.secondary.blend(.shade4)
         
+        if screenViewModel.dataSource.numberOfCommunity() == 0 {
+            actionButton.isHidden = true
+        } else {
+            actionButton.isHidden = false
+        }
+        
         let layout = (collectionView.collectionViewLayout as? UICollectionViewFlowLayout)
         layout?.scrollDirection = .horizontal
         layout?.itemSize = CGSize(width: 68, height: 64)
@@ -149,14 +155,16 @@ extension AmityMyCommunityPreviewViewController: AmityMyCommunityPreviewScreenVi
         
         // When view is invisible but data source request updates, mark it as a dirty data source.
         // Then after view already appear, reload table view for refreshing data.
-        guard isVisible else {
-            isDataSourceDirty = true
-            return
-        }
+//        guard isVisible else {
+//            isDataSourceDirty = true
+//            return
+//        }
         
         delegate?.viewController(self, shouldShowMyCommunityPreview: shouldShowMyCommunityPreview)
         if shouldShowMyCommunityPreview {
             collectionView?.reloadData()
+        } else {
+            retrieveCommunityList()
         }
     }
     

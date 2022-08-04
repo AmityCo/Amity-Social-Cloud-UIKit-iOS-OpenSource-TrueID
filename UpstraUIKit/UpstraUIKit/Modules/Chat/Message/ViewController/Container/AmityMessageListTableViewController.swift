@@ -13,6 +13,7 @@ final class AmityMessageListTableViewController: UITableViewController {
     
     // MARK: - Properties
     private var screenViewModel: AmityMessageListScreenViewModelType!
+    private var cacheIndexPath: Int = 0
     
     // MARK: - View lifecycle
     private convenience init(viewModel: AmityMessageListScreenViewModelType) {
@@ -52,6 +53,8 @@ extension AmityMessageListTableViewController {
         }
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.separatorStyle = .none
+        tableView.separatorEffect = nil
         
     }
 }
@@ -77,6 +80,10 @@ extension AmityMessageListTableViewController {
         let contentYOffset = tableView.contentOffset.y
         let viewHeight = tableView.bounds.height
         
+        if cacheIndexPath == 0 {
+            cacheIndexPath = indexPath.row
+        }
+        
         Log.add("Content Height: \(contentHeight), Content Offset: \(contentYOffset), ViewHeight: \(viewHeight)")
         
         // We update scroll position based on the view state. User can be in multiple view state.
@@ -86,20 +93,20 @@ extension AmityMessageListTableViewController {
         if viewHeight >= contentHeight {
             return
         }
-        
-        tableView.layoutIfNeeded()
-        
-        let pageThreshold = 2.25 // It means user scroll up more than 2 and a quarter of pages.
-        if contentHeight - contentYOffset <= (viewHeight * pageThreshold) {
-            // State 2:
-            //
-            // User is at the bottom-most page. So we just scroll to the bottom when new message appears.
+
+        // State 2:
+        //
+        // User is seeing the latest message. So we just scroll to the bottom when new message appears
+        if viewHeight + contentYOffset >= contentHeight - 83 {
             Log.add("Scrolling tableview to show latest message")
-            tableView.scrollToRow(at: indexPath, at: .bottom, animated: false)
-        } else {
-            // State 3:
-            //
-            // User is looking at older messages. Prevent bringing user to the bottom.
+            
+            if cacheIndexPath <= indexPath.row + 1 {
+                tableView.layoutIfNeeded()
+                tableView.scrollToRow(at: indexPath, at: .bottom, animated: false)
+                cacheIndexPath = indexPath.row
+            }
+            
+            return
         }
         
     }

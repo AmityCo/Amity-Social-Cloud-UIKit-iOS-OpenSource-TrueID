@@ -14,6 +14,7 @@ final class AmityMessageListScreenViewModel: AmityMessageListScreenViewModelType
     
     enum Route {
         case pop
+        case dissmiss
     }
     
     enum Events {
@@ -82,15 +83,19 @@ final class AmityMessageListScreenViewModel: AmityMessageListScreenViewModelType
     private var lastNotOnline: Date?
     private var lastEnterBackground: Date?
     
+    private var otherUserNickname: String?
+    
     init(channelId: String) {
         self.channelId = channelId
         membershipParticipation = AmityChannelParticipation(client: AmityUIKitManagerInternal.shared.client, andChannel: channelId)
         channelRepository = AmityChannelRepository(client: AmityUIKitManagerInternal.shared.client)
         messageRepository = AmityMessageRepository(client: AmityUIKitManagerInternal.shared.client)
+        userRepository = AmityUserRepository(client: AmityUIKitManagerInternal.shared.client)
     }
     
     // MARK: - DataSource
     private let queue = OperationQueue()
+    private var channelModel: AmityChannelModel?
     private var messages: [[AmityMessageModel]] = []
     private var unsortedMessages: [AmityMessageModel] = []
     private var keyboardEvents: KeyboardInputEvents = .default
@@ -129,8 +134,16 @@ final class AmityMessageListScreenViewModel: AmityMessageListScreenViewModelType
         return channelId
     }
     
+    func getChannelModel() -> AmityChannelModel? {
+        return channelModel
+    }
+    
     func getCommunityId() -> String {
         return channelId
+    }
+    
+    func getOtherUserNickName() -> String {
+        return otherUserNickname ?? ""
     }
     
     private func connectionStateDidChanged() {
@@ -216,8 +229,9 @@ extension AmityMessageListScreenViewModel {
         channelNotificationToken?.invalidate()
         channelNotificationToken = channelRepository.getChannel(channelId).observe { [weak self] (channel, error) in
             guard let object = channel.object else { return }
-            let channelModel = AmityChannelModel(object: object)
-            self?.delegate?.screenViewModelDidGetChannel(channel: channelModel)
+            let model = AmityChannelModel(object: object)
+            self?.channelModel = model
+            self?.getOtherUserData(channelModel: model)
         }
     }
     
@@ -239,31 +253,48 @@ extension AmityMessageListScreenViewModel {
         
     }
     
+    func getOtherUserData(channelModel: AmityChannelModel) {
+        let otherUserId = channelModel.getOtherUserId()
+        userNotificationToken = userRepository.getUser(otherUserId).observe({[weak self] user, error in
+            guard let weakSelf = self else { return }
+            if let userObject = user.object {
+                weakSelf.otherUserNickname = userObject.displayName
+                weakSelf.userNotificationToken?.invalidate()
+            }
+            weakSelf.delegate?.screenViewModelDidGetChannel(channel: channelModel)
+        })
+    }
+    
     func send(withText text: String?) {
         let textMessage = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !textMessage.isEmpty else {
             return
         }
+        self.text = ""
+        delegate?.screenViewModelEvents(for: .didSendText)
         messageRepository.createTextMessage(withChannelId: channelId, text: textMessage, tags: nil, parentId: nil) { [weak self] _,_ in
-            self?.text = ""
-            self?.delegate?.screenViewModelEvents(for: .didSendText)
+            
         }
     }
     
     func editText(with text: String, messageId: String) {
         let textMessage = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !textMessage.isEmpty else { return }
+        delegate?.screenViewModelDidGetChannel(channel: channelModel!)
         
         editor = AmityMessageEditor(client: AmityUIKitManagerInternal.shared.client, messageId: messageId)
         editor?.editText(textMessage, completion: { [weak self] (isSuccess, error) in
             guard isSuccess else { return }
             
             self?.delegate?.screenViewModelEvents(for: .didEditText)
+            
             self?.editor = nil
         })
     }
     
     func delete(withMessage message: AmityMessageModel, at indexPath: IndexPath) {
+        AmityHUD.show(.loading)
+        messageRepository = AmityMessageRepository(client: AmityUIKitManagerInternal.shared.client)
         messageRepository?.deleteMessage(withId: message.messageId, completion: { [weak self] (status, error) in
             guard error == nil , status else { return }
             switch message.messageType {
@@ -464,6 +495,10 @@ extension AmityMessageListScreenViewModel {
         }
 
         queue.addOperations(operations, waitUntilFinished: false)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now()+0.2, execute: {
+            self.delegate?.screenViewModelEvents(for: .didSendImage)
+        })
     }
     
 }
@@ -475,8 +510,9 @@ extension AmityMessageListScreenViewModel {
         messageAudio?.create { [weak self] in
             self?.messageAudio = nil
             self?.delegate?.screenViewModelEvents(for: .updateMessages)
-            self?.delegate?.screenViewModelEvents(for: .didSendAudio)
-            self?.shouldScrollToBottom(force: true)
+            DispatchQueue.main.asyncAfter(deadline: .now()+0.3, execute: {
+                self?.delegate?.screenViewModelEvents(for: .didSendAudio)
+            })
         }
     }
 

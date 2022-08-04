@@ -7,11 +7,22 @@
 //
 
 import UIKit
+import Photos
+
+public enum PostFromTodayType {
+    case generic
+    case camera
+    case photo
+    case video
+    case poll
+}
 
 final public class AmityPostTargetPickerViewController: AmityViewController {
     
     /// Set this variable to indicate post type to create.
     var postContentType: AmityPostContentType = .post
+    var postType: PostFromTodayType?
+    var galleryAsset: [PHAsset]?
 
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let screenViewModel = AmityPostTargetPickerScreenViewModel()
@@ -28,6 +39,18 @@ final public class AmityPostTargetPickerViewController: AmityViewController {
     public static func make(postContentType: AmityPostContentType = .post) -> AmityPostTargetPickerViewController {
         let vc = AmityPostTargetPickerViewController()
         vc.postContentType = postContentType
+        return vc
+    }
+    
+    public static func makePostBy(postType: PostFromTodayType? = nil) -> AmityPostTargetPickerViewController {
+        let vc = AmityPostTargetPickerViewController()
+        vc.postType = postType
+        return vc
+    }
+    
+    public static func makePostBy(asset:[PHAsset] = []) -> AmityPostTargetPickerViewController {
+        let vc = AmityPostTargetPickerViewController()
+        vc.galleryAsset = asset
         return vc
     }
 
@@ -130,7 +153,16 @@ extension AmityPostTargetPickerViewController: UITableViewDelegate {
             postTarget = .community(object: community)
         }
         
-        AmityEventHandler.shared.postTargetDidSelect(from: self, postTarget: postTarget, postContentType: self.postContentType)
+        if postType != nil {
+            AmityEventHandler.shared.postTargetDidSelectFromToday(from: self, postTarget: postTarget, postType: self.postType!)
+        } else {
+            if galleryAsset != nil {
+                AmityEventHandler.shared.postTargetDidSelectFromGallery(from: self, postTarget: postTarget, asset: galleryAsset!)
+            } else {
+                AmityEventHandler.shared.postTargetDidSelect(from: self, postTarget: postTarget, postContentType: self.postContentType)
+            }
+            
+        }
     }
     
 }

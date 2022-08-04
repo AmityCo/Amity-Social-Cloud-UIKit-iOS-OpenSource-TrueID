@@ -7,6 +7,7 @@
 
 import Foundation
 import AmitySDK
+import AmityUIKit
 
 extension LiveStreamBroadcastViewController {
     
@@ -16,7 +17,7 @@ extension LiveStreamBroadcastViewController {
         // Validate Inputs
         switch validateInputs() {
         case .failure(let error):
-            presentErrorDialogue(title: "Input Error", message: error.localizedDescription)
+            presentErrorDialogue(title: AmityLocalizedStringSet.LiveStream.Alert.imputError.localizedString, message: error.localizedDescription)
             return
         case .success:
             break
@@ -34,7 +35,11 @@ extension LiveStreamBroadcastViewController {
     private func validateInputs() -> Result<Void, Error> {
         let title = titleTextField.text ?? ""
         if title.isEmpty {
-            return .failure(GeneralError(message: "Title can not be empty."))
+            return .failure(GeneralError(message: AmityLocalizedStringSet.LiveStream.Alert.titleCanNotEmpty.localizedString))
+        }
+        let description = descriptionTextView.text ?? ""
+        if description.isEmpty {
+            return .failure(GeneralError(message: AmityLocalizedStringSet.LiveStream.Alert.descriptionCanNotEmpty.localizedString))
         }
         return .success(Void())
     }
@@ -84,12 +89,14 @@ extension LiveStreamBroadcastViewController {
         operations.append(createPost)
         
         // Observe last create psot completion, to update UI.
+        AmityHUD.show(.loading)
         createPost.completionBlock = { [weak createPost, weak self] in
             guard let result = createPost?.result else {
                 assertionFailure("create post result must be ready at this point.")
                 return
             }
             DispatchQueue.main.async {
+                AmityHUD.hide()
                 self?.handleCreatePostResult(result)
             }
         }
@@ -110,15 +117,16 @@ extension LiveStreamBroadcastViewController {
             guard let firstChildPost = post.childrenPosts?.first,
                   let streamObject = firstChildPost.getLiveStreamInfo() else {
                 assertionFailure("post.getLiveStreamInfo must exist at this point.")
-                presentErrorDialogue(title: "Error", message: "Unable to find live stream data in post.")
+//                presentErrorDialogue(title: AmityLocalizedStringSet.ErrorHandling.errorTitle.localizedString, message: AmityLocalizedStringSet.LiveStream.Live.findPostLiveStreamData.localizedString)
                 return
             }
             createdPost = post
             broadcaster?.startPublish(existingStreamId: streamObject.streamId)
+            streamId = streamObject.streamId
             startLiveDurationTimer()
             switchToUIState(.streaming)
         case .failure(let error):
-            presentErrorDialogue(title: "Error", message: error.localizedDescription)
+            presentErrorDialogue(title: AmityLocalizedStringSet.ErrorHandling.errorTitle.localizedString, message: error.localizedDescription)
         }
         
     }

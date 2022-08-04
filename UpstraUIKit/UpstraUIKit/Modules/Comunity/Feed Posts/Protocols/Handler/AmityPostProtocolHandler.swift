@@ -53,6 +53,13 @@ final class AmityPostProtocolHandler {
 
 extension AmityPostProtocolHandler: AmityPostDelegate {
     
+    func loadTableViewPollFinish() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.tableView?.reloadData()
+            self.tableView?.isHidden = false
+        }
+    }
+    
     func didPerformAction(_ cell: AmityPostProtocol, action: AmityPostAction) {
         guard let post = cell.post else { return }
         switch action {
@@ -121,7 +128,8 @@ extension AmityPostProtocolHandler: AmityPostDelegate {
                 AmityEventHandler.shared.openLiveStreamPlayer(
                     from: viewController!,
                     postId: post.postId,
-                    streamId: stream.streamId
+                    streamId: stream.streamId,
+                    post: post.post
                 )
             }
         case .tapOnMentionWithUserId(let userId):

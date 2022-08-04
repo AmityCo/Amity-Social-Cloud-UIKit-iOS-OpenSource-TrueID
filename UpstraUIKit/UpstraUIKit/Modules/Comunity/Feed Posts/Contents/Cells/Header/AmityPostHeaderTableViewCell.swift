@@ -21,7 +21,8 @@ public final class AmityPostHeaderTableViewCell: UITableViewCell, Nibbable, Amit
     @IBOutlet private var badgeLabel: UILabel!
     @IBOutlet private var datetimeLabel: UILabel!
     @IBOutlet private var optionButton: UIButton!
-    
+    @IBOutlet private var pinIconImageView: UIImageView!
+
     private(set) public var post: AmityPostModel?
     
     public override func awakeFromNib() {
@@ -36,7 +37,15 @@ public final class AmityPostHeaderTableViewCell: UITableViewCell, Nibbable, Amit
     
     public func display(post: AmityPostModel) {
         self.post = post
-        avatarView.setImage(withImageURL: post.postedUser?.avatarURL, placeholder: AmityIconSet.defaultAvatar)
+//        avatarView.setImage(withImageURL: post.postedUser?.avatarURL, placeholder: AmityIconSet.defaultAvatar)
+        
+        if !( (post.postedUser?.customAvatarURL ?? "").isEmpty) {
+            avatarView.setImage(withCustomURL: post.postedUser?.customAvatarURL,
+                                         placeholder: AmityIconSet.defaultAvatar)
+        } else {
+            avatarView.setImage(withImageURL: post.postedUser?.avatarURL,
+                                         placeholder: AmityIconSet.defaultAvatar)
+        }
         avatarView.actionHandler = { [weak self] in
             self?.avatarTap()
         }
@@ -47,7 +56,6 @@ public final class AmityPostHeaderTableViewCell: UITableViewCell, Nibbable, Amit
                                    shouldShowCommunityName: post.appearance.shouldShowCommunityName, shouldShowBannedSymbol: post.postedUser?.isGlobalBan ?? false)
         displayNameLabel.delegate = self
         datetimeLabel.text = post.subtitle
-        
 
         switch post.feedType {
         case .reviewing:
@@ -64,6 +72,12 @@ public final class AmityPostHeaderTableViewCell: UITableViewCell, Nibbable, Amit
         
         displayNameLabel.delegate = self
         datetimeLabel.text = post.subtitle
+        
+        if post.isPin {
+            pinIconImageView.isHidden = false
+        } else {
+            pinIconImageView.isHidden = true
+        }
     }
 
     // MARK: - Setup views

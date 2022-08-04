@@ -24,6 +24,7 @@ final class AmityFeedScreenViewModel: AmityFeedScreenViewModelType {
     private let debouncer = Debouncer(delay: 0.3)
     private let feedType: AmityPostFeedType
     private var postComponents = [AmityPostComponent]()
+    private var pinPostComponents = [AmityPostComponent]()
     private(set) var isPrivate: Bool
     private(set) var isLoading: Bool {
         didSet {
@@ -31,7 +32,7 @@ final class AmityFeedScreenViewModel: AmityFeedScreenViewModelType {
             delegate?.screenViewModelLoadingStatusDidChange(self, isLoading: isLoading)
         }
     }
-    
+        
     init(withFeedType feedType: AmityPostFeedType,
         postController: AmityPostControllerProtocol,
         commentController: AmityCommentControllerProtocol,
@@ -66,6 +67,8 @@ extension AmityFeedScreenViewModel {
     
     private func prepareComponents(posts: [AmityPostModel]) {
         postComponents = []
+        postComponents = pinPostComponents
+        
         for post in posts {
             post.appearance.displayType = .feed
             switch post.dataTypeInternal {
@@ -86,39 +89,116 @@ extension AmityFeedScreenViewModel {
         isLoading = false
         delegate?.screenViewModelDidUpdateDataSuccess(self)
     }
+    
+    private func prepareComponentsPinPost(posts: AmityPostModel?) {
+        pinPostComponents = []
+        
+        guard let post = posts else {
+            return
+        }
+        post.appearance.displayType = .feed
+        switch post.dataTypeInternal {
+        case .text:
+            addPinPostComponent(component: AmityPostTextComponent(post: post))
+        case .image, .video:
+            addPinPostComponent(component: AmityPostMediaComponent(post: post))
+        case .file:
+            addPinPostComponent(component: AmityPostFileComponent(post: post))
+        case .poll:
+            addPinPostComponent(component: AmityPostPollComponent(post: post))
+        case .liveStream:
+            addPinPostComponent(component: AmityPostLiveStreamComponent(post: post))
+        case .unknown:
+            addPinPostComponent(component: AmityPostPlaceHolderComponent(post: post))
+        }
+    }
 
     private func addComponent(component: AmityPostComposable) {
         postComponents.append(AmityPostComponent(component: component))
     }
+    
+    private func addPinPostComponent(component: AmityPostComposable) {
+        pinPostComponents.append(AmityPostComponent(component: component))
+    }
 }
 
-// MARK: - Action
+// MARK: - Actio
 // MARK: Fetch data
 extension AmityFeedScreenViewModel {
     
     func fetchPosts() {
-        isLoading = true
-        postController.retrieveFeed(withFeedType: feedType) { [weak self] (result) in
-            guard let strongSelf = self else { return }
-            switch result {
-            case .success(let posts):
-                strongSelf.debouncer.run {
-                    strongSelf.prepareComponents(posts: posts)
-                }
-            case .failure(let error):
-                strongSelf.debouncer.run {
-                    strongSelf.prepareComponents(posts: [])
-                }
-                if let amityError = AmityError(error: error), amityError == .noUserAccessPermission {
-                    switch strongSelf.feedType {
-                    case .userFeed:
-                        strongSelf.isPrivate = true
-                    default:
-                        strongSelf.isPrivate = false
+        if feedType == .customPostRankingGlobalFeed {
+            isLoading = true
+            customAPIRequest.getPinPostData() { postArray in
+                DispatchQueue.main.async {
+                    self.prepareComponentsPinPost(posts: nil)
+                    guard let postsData = postArray else { return }
+                    for posts in postsData.posts {
+                        let postId = posts.postId
+                        
+                        //Get Pin-post data
+                        self.postController.getPostForPostId(withPostId: postId ?? "", isPin: true) { [weak self] (result) in
+                            guard let strongSelf = self else { return }
+                            switch result {
+                            case .success(let post):
+                                strongSelf.prepareComponentsPinPost(posts: post)
+                            case .failure:
+                                break
+                            }
+                        }
                     }
-                    strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: amityError)
-                } else {
-                    strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: AmityError(error: error) ?? .unknown)
+                }
+            }
+            DispatchQueue.main.async {
+                //Get Feed's posts after get Pin-post data
+                self.postController.retrieveFeed(withFeedType: self.feedType) { [weak self] (result) in
+                    guard let strongSelf = self else { return }
+                    switch result {
+                    case .success(let posts):
+                        strongSelf.prepareComponents(posts: posts)
+                    case .failure(let error):
+                        if let amityError = AmityError(error: error), amityError == .noUserAccessPermission {
+                            switch strongSelf.feedType {
+                            case .userFeed:
+                                strongSelf.isPrivate = true
+                            default:
+                                strongSelf.isPrivate = false
+                            }
+                            strongSelf.debouncer.run {
+                                strongSelf.prepareComponents(posts: [])
+                            }
+                            strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: amityError)
+                        } else {
+                            strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: AmityError(error: error) ?? .unknown)
+                        }
+                    }
+                }
+            }
+        } else {
+            isLoading = true
+            postController.retrieveFeed(withFeedType: feedType) { [weak self] (result) in
+                guard let strongSelf = self else { return }
+                switch result {
+                case .success(let posts):
+                    strongSelf.debouncer.run {
+                        strongSelf.prepareComponents(posts: posts)
+                    }
+                case .failure(let error):
+                    print("---> ERROR !! \(error.localizedDescription.description)")
+                    if let amityError = AmityError(error: error), amityError == .noUserAccessPermission {
+                        switch strongSelf.feedType {
+                        case .userFeed:
+                            strongSelf.isPrivate = true
+                        default:
+                            strongSelf.isPrivate = false
+                        }
+                        strongSelf.debouncer.run {
+                            strongSelf.prepareComponents(posts: [])
+                        }
+                        strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: amityError)
+                    } else {
+                        strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: AmityError(error: error) ?? .unknown)
+                    }
                 }
             }
         }
@@ -150,6 +230,10 @@ extension AmityFeedScreenViewModel {
         fetchPosts()
         if notification.name == Notification.Name.Post.didCreate {
             delegate?.screenViewModelScrollToTop(self)
+        }
+        
+        if notification.name == Notification.Name.Post.didDelete {
+            delegate?.screenViewModelDidDelete()
         }
     }
 }
@@ -197,13 +281,16 @@ extension AmityFeedScreenViewModel {
 // MARK: Post
 extension AmityFeedScreenViewModel {
     func delete(withPostId postId: String) {
+        AmityHUD.show(.loading)
         postController.delete(withPostId: postId, parentId: nil) { [weak self] (success, error) in
             guard let strongSelf = self else { return }
+            AmityHUD.hide()
             if success {
                 NotificationCenter.default.post(name: NSNotification.Name.Post.didDelete, object: nil)
             } else {
                 strongSelf.delegate?.screenViewModelDidFail(strongSelf, failure: AmityError(error: error) ?? .unknown)
             }
+            PTNToast.share.present(title: "Post has been deleted")
         }
     }
     
@@ -332,3 +419,4 @@ extension AmityFeedScreenViewModel {
     }
     
 }
+

@@ -8,6 +8,7 @@
 
 import UIKit
 import AmitySDK
+import Photos
 
 /// Global event handler for function overriding
 ///
@@ -32,7 +33,7 @@ public enum AmityPostContentType {
 
 open class AmityEventHandler {
     
-    static var shared = AmityEventHandler()
+    public static var shared = AmityEventHandler()
     
     public init() { }
     
@@ -52,8 +53,7 @@ open class AmityEventHandler {
     /// If any of them doesn't exsist, popping to previous page.
     open func leaveCommunityDidTap(from source: AmityViewController, communityId: String) {
         if let vc = source.navigationController?
-            .viewControllers.last(where: { $0.isKind(of: AmityCommunityHomePageViewController.self)
-                                    || $0.isKind(of: AmityNewsfeedViewController.self)
+            .viewControllers.last(where: { $0.isKind(of: AmityNewsfeedViewController.self)
                                     || $0.isKind(of: AmityFeedViewController.self) }) {
             source.navigationController?.popToViewController(vc, animated: true)
             return
@@ -106,9 +106,28 @@ open class AmityEventHandler {
     open func postTargetDidSelect(
         from source: AmityViewController,
         postTarget: AmityPostTarget,
-        postContentType: AmityPostContentType
+        postContentType: AmityPostContentType,
+        openByProfileTrueID: Bool = false
     ) {
-        createPostDidTap(from: source, postTarget: postTarget, postContentType: postContentType)
+        createPostDidTap(from: source, postTarget: postTarget, postContentType: postContentType, openByProfileTrueID: openByProfileTrueID)
+    }
+    
+    open func postTargetDidSelectFromToday(
+        from source: AmityViewController,
+        postTarget: AmityPostTarget,
+        postType: PostFromTodayType,
+        openByProfileTrueID: Bool = false
+    ) {
+        createPostDidTapFromToday(from: source, postTarget: postTarget, postType: postType)
+    }
+    
+    open func postTargetDidSelectFromGallery(
+        from source: AmityViewController,
+        postTarget: AmityPostTarget,
+        openByProfileTrueID: Bool = false,
+        asset: [PHAsset]
+    ) {
+        createPostDidTapFromGallery(from: source, postTarget: postTarget, asset: asset)
     }
         
     /// Event for post creator
@@ -116,11 +135,12 @@ open class AmityEventHandler {
     ///
     /// If there is a `postTarget` passing into, immediately calls `postTargetDidSelect(:)`.
     /// If there isn't , navigate to `AmityPostTargetSelectionViewController`.
-    open func createPostBeingPrepared(from source: AmityViewController, postTarget: AmityPostTarget? = nil) {
+    open func createPostBeingPrepared(from source: AmityViewController, postTarget: AmityPostTarget? = nil, liveStreamPermission: Bool = false, openByProfileTrueID: Bool = false) {
+        debugPrint("Open Profile ==> \(openByProfileTrueID)")
         let completion: ((AmityPostContentType) -> Void) = { postContentType in
             if let postTarget = postTarget {
                 // show create post
-                AmityEventHandler.shared.postTargetDidSelect(from: source, postTarget: postTarget, postContentType: postContentType)
+                AmityEventHandler.shared.postTargetDidSelect(from: source, postTarget: postTarget, postContentType: postContentType, openByProfileTrueID: openByProfileTrueID)
             } else {
                 // show post target picker
                 let postTargetVC = AmityPostTargetPickerViewController.make(postContentType: postContentType)
@@ -139,12 +159,17 @@ open class AmityEventHandler {
         }
         
         let livestreamPost = ImageItemOption(
-            title: "Livestream",
+            title: AmityLocalizedStringSet.LiveStream.Create.titleName.localizedString,
             image: UIImage(named: "icon_create_livestream_post", in: AmityUIKitManager.bundle, compatibleWith: nil)) {
                 completion(.livestream)
             }
         
-        AmityBottomSheet.present(options: [livestreamPost, postOption, pollPostOption], from: source)
+        if liveStreamPermission {
+            AmityBottomSheet.present(options: [postOption, livestreamPost, pollPostOption], from: source)
+        } else {
+            AmityBottomSheet.present(options: [postOption, pollPostOption], from: source)
+        }
+
     }
     
     /// Event for post creator
@@ -153,7 +178,7 @@ open class AmityEventHandler {
     /// The default behavior is presenting or navigating to post creation page, which depends on post content type.
     ///  - `AmityPostCreatorViewController` for post type
     ///  - `AmityPollCreatorViewController` for poll type
-    open func createPostDidTap(from source: AmityViewController, postTarget: AmityPostTarget, postContentType: AmityPostContentType = .post) {
+    open func createPostDidTap(from source: AmityViewController, postTarget: AmityPostTarget, postContentType: AmityPostContentType = .post, openByProfileTrueID: Bool) {
         
         var viewController: AmityViewController
         switch postContentType {
@@ -164,21 +189,72 @@ open class AmityEventHandler {
         case .livestream:
             switch postTarget {
             case .myFeed:
-                createLiveStreamPost(from: source, targetId: nil, targetType: .user, destinationToUnwindBackAfterFinish: source.presentingViewController ?? source)
+                createLiveStreamPost(from: source, targetId: nil, targetType: .user, openByProfileTrueID: openByProfileTrueID, destinationToUnwindBackAfterFinish: source.presentingViewController ?? source)
             case .community(object: let community):
-                createLiveStreamPost(from: source, targetId: community.communityId, targetType: .community, destinationToUnwindBackAfterFinish: source.presentingViewController ?? source)
+//                createLiveStreamPost(from: source, targetId: community.communityId, targetType: .community, destinationToUnwindBackAfterFinish: source.presentingViewController ?? source)
+                createLiveStreamPost(from: source, targetId: community.communityId, targetType: .community, openByProfileTrueID: openByProfileTrueID, destinationToUnwindBackAfterFinish: source.presentingViewController ?? source)
             }
             return
         }
         
-        if source.isModalPresentation {
-            // a source is presenting. push a new vc.
-            source.navigationController?.pushViewController(viewController, animated: true)
-        } else {
+        if openByProfileTrueID {
             let navigationController = UINavigationController(rootViewController: viewController)
             navigationController.modalPresentationStyle = .overFullScreen
             source.present(navigationController, animated: true, completion: nil)
+        } else {
+            if source.isModalPresentation {
+                // a source is presenting. push a new vc.
+                if source.isKind(of: AmityPostTargetPickerViewController.self) {
+                    source.navigationController?.pushViewController(viewController, animated: true)
+                    return
+                }
+                
+                if case .myFeed = postTarget {
+                    source.navigationController?.pushViewController(viewController, animated: true)
+                    return
+                }
+                
+                let navigationController = UINavigationController(rootViewController: viewController)
+                navigationController.modalPresentationStyle = .overFullScreen
+                source.present(navigationController, animated: true, completion: nil)
+            } else {
+                let navigationController = UINavigationController(rootViewController: viewController)
+                navigationController.modalPresentationStyle = .overFullScreen
+                source.present(navigationController, animated: true, completion: nil)
+            }
         }
+        
+    }
+    
+    open func createPostDidTapFromToday(from source: AmityViewController, postTarget: AmityPostTarget, postType: PostFromTodayType) {
+        
+        var viewController: AmityViewController
+        switch postType {
+        case .generic:
+            viewController = AmityPostCreatorViewController.make(postTarget: postTarget, postType: postType)
+            source.navigationController?.pushViewController(viewController, animated: true)
+        case .camera:
+            viewController = AmityPostCreatorViewController.make(postTarget: postTarget, postType: postType)
+            source.navigationController?.pushViewController(viewController, animated: true)
+        case .photo:
+            viewController = AmityPostCreatorViewController.make(postTarget: postTarget, postType: postType)
+            source.navigationController?.pushViewController(viewController, animated: true)
+        case .video:
+            viewController = AmityPostCreatorViewController.make(postTarget: postTarget, postType: postType)
+            source.navigationController?.pushViewController(viewController, animated: true)
+        case .poll:
+            viewController = AmityPollCreatorViewController.make(postTarget: postTarget, postType: postType)
+            source.navigationController?.pushViewController(viewController, animated: true)
+        }
+        
+    }
+    
+    open func createPostDidTapFromGallery(from source: AmityViewController, postTarget: AmityPostTarget, asset: [PHAsset]) {
+        
+        var viewController: AmityViewController
+        viewController = AmityPostCreatorViewController.make(postTarget: postTarget, asset: asset)
+        source.navigationController?.pushViewController(viewController, animated: true)
+        
     }
     
     /// This function will triggered when the user choose to "create live stream post".
@@ -192,6 +268,7 @@ open class AmityEventHandler {
         from source: AmityViewController,
         targetId: String?,
         targetType: AmityPostTargetType,
+        openByProfileTrueID: Bool,
         destinationToUnwindBackAfterFinish: UIViewController
     ) {
         print("To present live stream post creator, please override \(AmityEventHandler.self).\(#function), see https://docs.amity.co for more details.")
@@ -214,7 +291,7 @@ open class AmityEventHandler {
     ///   - source: The source view controller that trigger the event.
     ///   - postId: The post id to watch the live stream.
     ///   - streamId: The stream id to watch.
-    open func openLiveStreamPlayer(from source: AmityViewController, postId: String, streamId: String) {
+    open func openLiveStreamPlayer(from source: AmityViewController, postId: String, streamId: String, post: AmityPost) {
         print("To present live stream, please override \(AmityEventHandler.self).\(#function), see https://docs.amity.co for more details.")
     }
     
@@ -232,4 +309,61 @@ open class AmityEventHandler {
         }
         source.presentVideoPlayer(at: videoUrl)
     }
+    /// TrueID Project
+    open func shareCommunityPostDidTap(from source: UIViewController, title: String?, postId: String, communityId: String) {}
+    open func shareCommunityProfileDidTap(from source: UIViewController, communityModelExternal: AmityCommunityModelExternal) {}
+    open func shareLiveStreamDidTap(from source: UIViewController, amityPost: AmityPost? = nil) {}
+    
+    /// TrueID Detect Close view
+    open func closeAmityCommunityViewController() {}
+    
+    /// TrueID Scroll Profile Detect
+    open func timelineFeedDidScroll(_ scrollView: UIScrollView) {}
+    open func galleryDidScroll(_ scrollView: UIScrollView) {}
+    
+    /// TrueID Scroll Home Detect
+    open func homeCommunityDidScroll(_ scrollView: UIScrollView) {}
+    
+    /// TrueID ScanQRCode Seartch Tapped
+    open func homeCommunityScanQRCodeTapped() {}
+    
+    /// TrueID Set URL Advertisement
+    open func setURLAdvertisement(_ url: String) {}
+    
+    /// TrueID finish post from Today
+    open func finishPostEvent(_ success: Bool, userId: String) {}
+    
+    /// TrueID route to newsfeed from recent hat
+    open func routeToNewsfeedDidTap(from source: UIViewController) {}
+
+    /// TrueID open contact page
+    open func openContactPageEvent() {}
+    
+    //MARK: - AnalyticNCCEvent
+    open func communityTopbarSearchTracking() {}
+    open func communityTopbarProfileTracking() {}
+    open func communityExploreButtonTracking() {}
+    open func communityMyCommunitySectionTracking() {}
+    open func communityCreatePostButtonTracking(screenName: String) {}
+    open func communityJoinButtonTracking(screenName: String, communityModel: AmityCommunityModelExternal) {}
+    open func communityJoinButtonTracking(screenName: String) {}
+    open func communityDetailSectionTracking(screenName: String) {}
+    open func communityAllCategoryButtonTracking() {}
+    open func communityCategoryButtonTracking(screenName: String, categoryName: String) {}
+    open func communityRecommendSectionTracking() {}
+    open func communityEditProfileButtonTracking() {}
+    open func communitySaveEditProfileButtonTracking() {}
+    open func communityHomeButtonBarPagerTracking(tabName: String) {}
+    open func communityCategorySeeMoreButtonTracking(titleOfSelf: String) {}
+    
+    // MARK: - AnalyticNCCScreen
+    open func communityToExploreTracking() {}
+    open func communityToNewsfeedTracking() {}
+    open func communityCategoryListTracking() {}
+    open func communityPageToTimelineTracking() {}
+    open func communityUserProfileToTimelineTracking() {}
+    open func communityCategoryNameListTracking(categoryName: String) {}
+    
+    
+    
 }

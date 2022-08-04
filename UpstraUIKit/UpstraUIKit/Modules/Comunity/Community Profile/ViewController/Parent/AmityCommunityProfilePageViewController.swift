@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import AmitySDK
 
 public class AmityCommunityProfilePageSettings {
     public init() { }
@@ -25,16 +26,31 @@ public final class AmityCommunityProfilePageViewController: AmityProfileViewCont
     private var postButton: AmityFloatingButton = AmityFloatingButton()
     
     private var screenViewModel: AmityCommunityProfileScreenViewModelType!
+    private var screenViewModelNewsFeed: AmityNewsFeedScreenViewModelType? = nil
+    private var permissionCanLive: Bool = false
     
+    private var isEverFetch: Bool = false
+    private var isEverRoute: Bool = false
+
     public override func viewDidLoad() {
         super.viewDidLoad()
+        screenViewModel.delegate = self
         setupFeed()
+        setupScreenViewModelNewsFeed()
+//        routeToDeeplinksPostIfNeed()
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        AmityEventHandler.shared.communityPageToTimelineTracking()
+        navigationController?.setNavigationBarHidden(false, animated: true)
+        navigationController?.navigationItem.largeTitleDisplayMode = .never
         setupViewModel()
         setupPostButton()
+        
+        if isEverFetch {
+            navigationController?.popViewController(animated: true)
+        }
     }
     
     public override func viewDidAppear(_ animated: Bool) {
@@ -43,13 +59,14 @@ public final class AmityCommunityProfilePageViewController: AmityProfileViewCont
     }
     
     public static func make(
-        withCommunityId communityId: String,
-        settings: AmityCommunityProfilePageSettings = .init()
+        withCommunityId communityId: String, postId: String? = nil, fromDeeplinks: Bool = false, settings: AmityCommunityProfilePageSettings = .init()
     ) -> AmityCommunityProfilePageViewController {
         
         let communityRepositoryManager = AmityCommunityRepositoryManager(communityId: communityId)
         let viewModel = AmityCommunityProfileScreenViewModel(
             communityId: communityId,
+            postId: postId,
+            fromDeeplinks: fromDeeplinks,
             communityRepositoryManager: communityRepositoryManager
         )
         let vc = AmityCommunityProfilePageViewController()
@@ -92,7 +109,18 @@ public final class AmityCommunityProfilePageViewController: AmityProfileViewCont
         bottom.dataDidUpdateHandler = { [weak self] in
             self?.header.updatePostsCount()
         }
+        
+        bottom.updateDeletePostHandler = { [weak self] in
+            self?.screenViewModel.action.retriveCommunity()
+        }
     }
+    
+    private func setupScreenViewModelNewsFeed() {
+        screenViewModelNewsFeed = AmityNewsFeedScreenViewModel()
+        screenViewModelNewsFeed?.delegate = self
+        fetchUserProfile()
+    }
+    
     private func setupPostButton() {
         postButton.image = AmityIconSet.iconCreatePost
         postButton.add(to: view, position: .bottomRight)
@@ -104,7 +132,15 @@ public final class AmityCommunityProfilePageViewController: AmityProfileViewCont
     private func setupNavigationItemOption(show isJoined: Bool) {
         let item = UIBarButtonItem(image: AmityIconSet.iconOption, style: .plain, target: self, action: #selector(optionTap))
         item.tintColor = AmityColorSet.base
-        navigationItem.rightBarButtonItem = isJoined ? item : nil
+        
+        let shareItem = UIBarButtonItem(image: AmityIconSet.iconShare, style: .plain, target: self, action: #selector(shareCommunityProfile))
+        item.tintColor = AmityColorSet.base
+        
+        var items: [UIBarButtonItem] = []
+        if isJoined { items.append(item) }
+        items.append(shareItem)
+        
+        navigationItem.rightBarButtonItems = items
     }
     
     private func showCommunitySettingModal() {
@@ -147,12 +183,28 @@ private extension AmityCommunityProfilePageViewController {
         screenViewModel.action.route(.settings)
     }
     
+    @objc func shareCommunityProfile() {
+        if let communityModel: AmityCommunityModel = screenViewModel.dataSource.community {
+            let communityModelExternal: AmityCommunityModelExternal = AmityCommunityModelExternal(object: communityModel)
+            AmityEventHandler.shared.shareCommunityProfileDidTap(from: self, communityModelExternal: communityModelExternal)
+        }
+    }
+    
     func postAction() {
+        AmityEventHandler.shared.communityCreatePostButtonTracking(screenName: ScreenName.communityProfile.rawValue)
         screenViewModel.action.route(.post)
     }
 }
 
 extension AmityCommunityProfilePageViewController: AmityCommunityProfileScreenViewModelDelegate {
+    
+    func screenViewModelRouteDeeplink() {
+        if !isEverRoute {
+            routeToDeeplinksPostIfNeed()
+        }
+        isEverRoute = true
+    }
+    
     
     func screenViewModelDidGetCommunity(with community: AmityCommunityModel) {
         postButton.isHidden = !community.isJoined
@@ -167,18 +219,48 @@ extension AmityCommunityProfilePageViewController: AmityCommunityProfileScreenVi
         }
     }
     
+    func screenViewModelDidShowAlertDialog() {
+        if !isEverFetch {
+            let firstAction = AmityDefaultModalModel.Action(title: AmityLocalizedStringSet.General.ok,
+                                                            textColor: UIColor.white,
+                                                            backgroundColor: UIColor.black)
+            
+            let communityPostModel = AmityDefaultModalModel(image: AmityIconSet.iconNotFound,
+                                                            title: AmityLocalizedStringSet.Modal.contentNotfoundTitle,
+                                                            description: AmityLocalizedStringSet.Modal.contentNotfoundDesc,
+                                                            firstAction: firstAction, secondAction: nil,
+                                                            layout: .single)
+            let communityPostModalView = AmityDefaultModalView.make(content: communityPostModel)
+            communityPostModalView.firstActionHandler = {
+                AmityHUD.hide { [weak self] in
+                    self?.navigationController?.popViewController(animated: true)
+                }
+            }
+            
+            AmityHUD.show(.custom(view: communityPostModalView))
+        }
+        isEverFetch = true
+    }
+    
     func screenViewModelRoute(_ viewModel: AmityCommunityProfileScreenViewModel, route: AmityCommunityProfileRoute) {
-        guard let community = viewModel.community else { return }
         switch route {
         case .post:
-            AmityEventHandler.shared.createPostBeingPrepared(from: self, postTarget: .community(object: community.object))
+            guard let community = viewModel.community else { return }
+//            let vc = AmityPostCreatorViewController.make(postTarget: .community(object: community.object))
+//            let nav = UINavigationController(rootViewController: vc)
+//            nav.modalPresentationStyle = .fullScreen
+//            present(nav, animated: true, completion: nil)
+            AmityEventHandler.shared.createPostBeingPrepared(from: self, postTarget: .community(object: community.object),liveStreamPermission: self.permissionCanLive)
         case .member:
+            guard let community = viewModel.community else { return }
             let vc = AmityCommunityMemberSettingsViewController.make(community: community.object)
             navigationController?.pushViewController(vc, animated: true)
         case .settings:
+            guard let community = viewModel.community else { return }
             let vc = AmityCommunitySettingsViewController.make(communityId: community.communityId)
             navigationController?.pushViewController(vc, animated: true)
         case .editProfile:
+            guard let community = viewModel.community else { return }
             let vc = AmityCommunityEditorViewController.make(withCommunityId: community.communityId)
             vc.delegate = self
             let nav = UINavigationController(rootViewController: vc)
@@ -187,6 +269,9 @@ extension AmityCommunityProfilePageViewController: AmityCommunityProfileScreenVi
         case .pendingPosts:
             let vc = AmityPendingPostsViewController.make(communityId: viewModel.communityId)
             navigationController?.pushViewController(vc, animated: true)
+        case .deeplinksPost(id: let id):
+            let viewController = AmityPostDetailViewController.make(withPostId: id)
+            navigationController?.pushViewController(viewController, animated: true)
         }
     }
 
@@ -194,9 +279,10 @@ extension AmityCommunityProfilePageViewController: AmityCommunityProfileScreenVi
 }
 
 extension AmityCommunityProfilePageViewController: AmityRefreshable {
-    
+
     func handleRefreshing() {
         screenViewModel.action.retriveCommunity()
+        bottom.galleryVC?.reloadDataImage()
     }
 
 }
@@ -211,4 +297,42 @@ extension AmityCommunityProfilePageViewController: AmityCommunityProfileEditorVi
         navigationController?.popToRootViewController(animated: true)
     }
 
+}
+
+//MARK: NCC
+private extension AmityCommunityProfilePageViewController {
+    func routeToDeeplinksPostIfNeed() {
+        if !screenViewModel.dataSource.fromDeeplinks { return }
+        
+        guard let postId = screenViewModel.dataSource.postId else { return }
+        
+        screenViewModel.action.route(.deeplinksPost(id: postId))
+    }
+}
+
+// MARK: - Action
+extension AmityCommunityProfilePageViewController {
+    
+    func fetchUserProfile() {
+        screenViewModelNewsFeed?.fetchUserProfile(with: AmityUIKitManagerInternal.shared.currentUserId)
+    }
+    
+}
+// MARK: - Delegate
+extension AmityCommunityProfilePageViewController: AmityNewsFeedScreenViewModelDelegate {
+    
+    func didFetchUserProfile(user: AmityUser) {
+        switch AmityUIKitManagerInternal.shared.envByApiKey {
+        case .staging:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.stagingLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        case .production:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        default:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        }
+    }
+    
 }

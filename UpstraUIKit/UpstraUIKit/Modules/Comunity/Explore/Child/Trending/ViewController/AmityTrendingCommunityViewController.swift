@@ -95,30 +95,52 @@ extension AmityTrendingCommunityViewController: UITableViewDataSource {
         cell.display(with: community)
         cell.displayNumber(with: indexPath)
         cell.delegate = self
-        let cellHeight = cell.isCategoryLabelTruncated ? 70 : 56
-        tableViewHeight += CGFloat(cellHeight)
         return cell
     }
 }
 
 // MARK: - AmityTrendingCommunityScreenViewModelDelegate
 extension AmityTrendingCommunityViewController: AmityTrendingCommunityScreenViewModelDelegate {
-
+    
     func screenViewModel(_ viewModel: AmityTrendingCommunityScreenViewModelType, didRetrieveTrending trending: [AmityCommunityModel], isEmpty: Bool) {
         emptyHandler?(isEmpty)
         tableViewHeight = 0
-        heightTableViewContraint.constant = CGFloat(trending.count * 56)
+        heightTableViewContraint.constant = 0
+        self.tableView.layoutIfNeeded()
+        if AmityUIKitManager.AmityLanguage == "my" {
+            heightTableViewContraint.constant = CGFloat(trending.count * 85)
+        } else {
+            heightTableViewContraint.constant = CGFloat(trending.count * 65)
+        }
+        self.tableView.layoutIfNeeded()
         tableView.reloadData()
     }
     
     func screenViewModel(_ viewModel: AmityTrendingCommunityScreenViewModelType, didFail error: AmityError) {
         emptyHandler?(true)
     }
+    
+    func didJoinFailure(error: AmityError) {
+        
+    }
+    
+    func didLeaveFailure(error: AmityError) {
+    
+    }
 
 }
 
+
 // MARK: - AmityTrendingCommunityTableViewCellDelegate
 extension AmityTrendingCommunityViewController: AmityTrendingCommunityTableViewCellDelegate {
+    func didJoin(with item: AmityCommunityModel) {
+        screenViewModel.action.joinCommunity(community: item)
+    }
+    
+    func didLeave(with item: AmityCommunityModel) {
+        screenViewModel.action.leaveCommunity(community: item)
+    }
+    
     func cellDidTapOnAvatar(_ cell: AmityTrendingCommunityTableViewCell) {
         guard let indexPath = tableView.indexPath(for: cell) else { return }
         let community = screenViewModel.dataSource.community(at: indexPath)

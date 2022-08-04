@@ -29,6 +29,7 @@ public enum AmityPostAttachmentType: CaseIterable {
 class AmityPostTextEditorMenuView: UIView {
     
     static let defaultHeight: CGFloat = 60
+    var isMaximum: Bool = false
     
     private let allowPostAttachments: Set<AmityPostAttachmentType>
     
@@ -65,17 +66,13 @@ class AmityPostTextEditorMenuView: UIView {
     private func commonInit() {
         
         backgroundColor = AmityColorSet.backgroundColor
-        layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        layer.cornerRadius = 16
-        layer.borderColor = AmityColorSet.secondary.blend(.shade4).cgColor
-        layer.borderWidth = 1
         clipsToBounds = true
-        
+
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.distribution = .equalCentering
+        stackView.distribution = .fillProportionally
         stackView.alignment = .center
         topLineView.translatesAutoresizingMaskIntoConstraints = false
-        topLineView.backgroundColor = .clear
+        topLineView.backgroundColor = AmityColorSet.secondary.blend(.shade4)
         
         cameraButton.setImage(AmityIconSet.iconCameraSmall, for: .normal)
         cameraButton.addTarget(self, action: #selector(tapCamera), for: .touchUpInside)
@@ -90,16 +87,16 @@ class AmityPostTextEditorMenuView: UIView {
         
         // Setup arrangedSubview in stackview
         
-        let buttonsToAdd = [cameraButton, albumButton, videoButton, fileButton, expandButton]
+        let buttonsToAdd = [cameraButton, albumButton, videoButton, fileButton]
         for button in buttonsToAdd {
             button.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                button.widthAnchor.constraint(equalToConstant: 32),
-                button.heightAnchor.constraint(equalToConstant: 32)
-            ])
-            button.layer.cornerRadius = 16
-            button.clipsToBounds = true
-            button.backgroundColor = (button == expandButton) ? .clear : AmityColorSet.base.blend(.shade4)
+//            NSLayoutConstraint.activate([
+//                button.widthAnchor.constraint(equalToConstant: 32),
+//                button.heightAnchor.constraint(equalToConstant: 32)
+//            ])
+//            button.layer.cornerRadius = 16
+//            button.clipsToBounds = true
+//            button.backgroundColor = (button == expandButton) ? .clear : AmityColorSet.base.blend(.shade4)
             button.setTintColor(AmityColorSet.base, for: .normal)
             button.setTintColor(AmityColorSet.base.blend(.shade3), for: .disabled)
             stackView.addArrangedSubview(button)
@@ -109,7 +106,7 @@ class AmityPostTextEditorMenuView: UIView {
         cameraButton.isHidden = allowPostAttachments.isDisjoint(with: [.image, .video])
         albumButton.isHidden = allowPostAttachments.isDisjoint(with: [.image])
         videoButton.isHidden = allowPostAttachments.isDisjoint(with: [.video])
-        fileButton.isHidden = allowPostAttachments.isDisjoint(with: [.file])
+        fileButton.isHidden = allowPostAttachments.isDisjoint(with: [])
         
         // At empty view, at beginning, and the end of the stackview.
         // This logic works together with stackView.distribution = .equalCentering
@@ -134,20 +131,40 @@ class AmityPostTextEditorMenuView: UIView {
             stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
         ])
         
+        // settings
+//        cameraButton.isHidden = settings.shouldCameraButtonHide
+//        albumButton.isHidden = settings.shouldAlbumButtonHide
+//        fileButton.isHidden = settings.shouldFileButtonHide
+//        expandButton.isHidden = settings.shouldExpandButtonHide
+//        videoButton.isHidden = settings.shouldVideoButtonHide
     }
     
     private func updateButtonState() {
         switch currentAttachmentState {
         case .image:
-            cameraButton.isEnabled = true
-            albumButton.isEnabled = true
-            videoButton.isEnabled = false
-            fileButton.isEnabled = false
+            if isMaximum {
+                cameraButton.isEnabled = false
+                albumButton.isEnabled = false
+                videoButton.isEnabled = false
+                fileButton.isEnabled = false
+            } else {
+                cameraButton.isEnabled = true
+                albumButton.isEnabled = true
+                videoButton.isEnabled = false
+                fileButton.isEnabled = false
+            }
         case .video:
-            cameraButton.isEnabled = true
-            albumButton.isEnabled = false
-            videoButton.isEnabled = true
-            fileButton.isEnabled = false
+            if isMaximum {
+                cameraButton.isEnabled = false
+                albumButton.isEnabled = false
+                videoButton.isEnabled = false
+                fileButton.isEnabled = false
+            } else {
+                cameraButton.isEnabled = true
+                albumButton.isEnabled = false
+                videoButton.isEnabled = true
+                fileButton.isEnabled = false
+            }
         case .file:
             cameraButton.isEnabled = false
             albumButton.isEnabled = false

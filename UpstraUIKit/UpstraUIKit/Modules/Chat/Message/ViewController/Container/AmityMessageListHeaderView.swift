@@ -9,6 +9,10 @@
 import UIKit
 import AmitySDK
 
+protocol AmityMessageListHeaderViewDelegate {
+    func avatarDidTapGesture(userId: String)
+}
+
 final class AmityMessageListHeaderView: AmityView {
     
     // MARK: - Properties
@@ -19,10 +23,16 @@ final class AmityMessageListHeaderView: AmityView {
     // MARK: - Collections
     private var repository: AmityUserRepository?
     private var token: AmityNotificationToken?
+    private var participateToken: AmityNotificationToken?
     
     // MARK: - Properties
     private var screenViewModel: AmityMessageListScreenViewModelType?
-
+    var amityNavigationBarType: AmityNavigationBarType = .push
+    var avatarURL: String?
+    var userId: String?
+    
+    var delegate: AmityMessageListHeaderViewDelegate?
+    
     convenience init(viewModel: AmityMessageListScreenViewModelType) {
         self.init(frame: .zero)
         loadNibContent()
@@ -34,7 +44,16 @@ final class AmityMessageListHeaderView: AmityView {
 // MARK: - Action
 private extension AmityMessageListHeaderView {
     @IBAction func backTap() {
-        screenViewModel?.action.route(for: .pop)
+        if amityNavigationBarType == .push {
+            screenViewModel?.action.route(for: .pop)
+        } else {
+            screenViewModel?.action.route(for: .dissmiss)
+        }
+    }
+    
+    @objc func avatarTap(_ sender: UITapGestureRecognizer) {
+        guard let userId = userId else { return }
+        delegate?.avatarDidTapGesture(userId: userId)
     }
 }
 
@@ -44,14 +63,25 @@ private extension AmityMessageListHeaderView {
         
         contentView.backgroundColor = AmityColorSet.backgroundColor
         
-        backButton.tintColor = AmityColorSet.base
-        backButton.setImage(AmityIconSet.iconBack, for: .normal)
+        if amityNavigationBarType == .push {
+              backButton.tintColor = AmityColorSet.base
+              backButton.setImage(AmityIconSet.iconBack, for: .normal)
+          } else {
+              backButton.tintColor = AmityColorSet.base
+              backButton.setImage(AmityIconSet.iconClose, for: .normal)
+          }
         
         displayNameLabel.textColor = AmityColorSet.base
         displayNameLabel.font = AmityFontSet.title
+        displayNameLabel.text = AmityLocalizedStringSet.General.anonymous.localizedString
         
         avatarView.image = nil
         avatarView.placeholder = AmityIconSet.defaultAvatar
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(avatarTap))
+        let tapLabel = UITapGestureRecognizer(target: self, action: #selector(avatarTap))
+        avatarView.addGestureRecognizer(tap)
+        displayNameLabel.addGestureRecognizer(tapLabel)
     }
 }
 
@@ -63,20 +93,65 @@ extension AmityMessageListHeaderView {
         case .standard:
             avatarView.setImage(withImageURL: channel.avatarURL, placeholder: AmityIconSet.defaultGroupChat)
         case .conversation:
+//            avatarView.setImage(withImageURL: channel.avatarURL, placeholder: AmityIconSet.defaultAvatar)
+            participateToken?.invalidate()
+            participateToken = channel.participation.getMembers(filter: .all, sortBy: .firstCreated, roles: []).observe { collection, change, error in
+                for i in 0..<collection.count(){
+                    let userId = collection.object(at: i)?.userId
+                    if userId != AmityUIKitManagerInternal.shared.currentUserId {
+                        self.token = self.repository?.getUser(userId ?? "").observe { [weak self] user, error in
+                            self?.token?.invalidate()
+                            guard let userObject = user.object else { return }
+                            self?.userId = userObject.userId
+                            self?.displayNameLabel.text = userObject.displayName
+                            let userModel = AmityUserModel(user: userObject)
+                            if !userModel.avatarCustomURL.isEmpty {
+                                if self?.avatarURL != userModel.avatarCustomURL {
+                                    self?.avatarView.setImage(withCustomURL: userModel.avatarCustomURL,
+                                                             placeholder: AmityIconSet.defaultAvatar)
+                                    self?.avatarURL = userModel.avatarCustomURL
+                                }
+                                
+                            } else {
+                                if self?.avatarURL != userModel.avatarURL {
+                                    self?.avatarView.setImage(withImageURL: userModel.avatarURL,
+                                                              placeholder: AmityIconSet.defaultAvatar)
+                                    self?.avatarURL = userModel.avatarURL
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        case .community:
             avatarView.setImage(withImageURL: channel.avatarURL, placeholder: AmityIconSet.defaultAvatar)
             if !channel.getOtherUserId().isEmpty {
                 token?.invalidate()
                 token = repository?.getUser(channel.getOtherUserId()).observeOnce { [weak self] user, error in
                     guard let weakSelf = self else { return }
                     if let userObject = user.object {
+                        let userModel = AmityUserModel(user: userObject)
+                        if !userModel.avatarCustomURL.isEmpty {
+                            weakSelf.avatarView.setImage(withCustomURL: userModel.avatarCustomURL,
+                                                         placeholder: AmityIconSet.defaultAvatar)
+                        } else {
+                            weakSelf.avatarView.setImage(withImageURL: userModel.avatarURL,
+                                                         placeholder: AmityIconSet.defaultAvatar)
+                        }
                         weakSelf.displayNameLabel.text = userObject.displayName
                     }
                 }
             }
-        case .community:
-            avatarView.setImage(withImageURL: channel.avatarURL, placeholder: AmityIconSet.defaultGroupChat)
         default:
             break
         }
     }
+}
+
+extension AmityMessageListHeaderView {
+    
+    func setupData() {
+        setupView()
+    }
+    
 }

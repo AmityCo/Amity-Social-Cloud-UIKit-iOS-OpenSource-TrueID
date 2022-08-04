@@ -14,12 +14,15 @@ enum AmityCommunityProfileRoute {
     case settings
     case editProfile
     case pendingPosts
+    case deeplinksPost(id: String)
 }
 
 protocol AmityCommunityProfileScreenViewModelDelegate: AnyObject {
     func screenViewModelDidGetCommunity(with community: AmityCommunityModel)
     func screenViewModelFailure()
     func screenViewModelRoute(_ viewModel: AmityCommunityProfileScreenViewModel, route: AmityCommunityProfileRoute)
+    func screenViewModelDidShowAlertDialog()
+    func screenViewModelRouteDeeplink()
 }
 
 protocol AmityCommunityProfileScreenViewModelDataSource {
@@ -27,6 +30,11 @@ protocol AmityCommunityProfileScreenViewModelDataSource {
     var community: AmityCommunityModel? { get }
     var memberStatusCommunity: AmityMemberStatusCommunity { get }
     var postCount: Int { get }
+    
+    func shouldShowPendingPostBannerForMember(_ completion: ((Bool) -> Void)?)
+    
+    var fromDeeplinks: Bool { get set }
+    var postId: String? { get set }
 }
 
 protocol AmityCommunityProfileScreenViewModelAction {

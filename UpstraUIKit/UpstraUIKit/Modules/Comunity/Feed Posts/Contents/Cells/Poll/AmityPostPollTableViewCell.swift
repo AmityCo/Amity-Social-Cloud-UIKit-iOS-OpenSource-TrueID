@@ -27,6 +27,7 @@ final public class AmityPostPollTableViewCell: UITableViewCell, Nibbable, AmityP
     public weak var delegate: AmityPostDelegate?
     public var post: AmityPostModel?
     public var indexPath: IndexPath?
+    public var openPageByDetail: Bool = false
     
     private(set) var selectedAnswerIds: [String] = []
     
@@ -38,6 +39,10 @@ final public class AmityPostPollTableViewCell: UITableViewCell, Nibbable, AmityP
         setupVoteCountLabel()
         setupTableView()
         setupSubmitVoteButton()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            self.delegate?.loadTableViewPollFinish()
+        }
+
     }
     
     public override func prepareForReuse() {
@@ -68,7 +73,13 @@ final public class AmityPostPollTableViewCell: UITableViewCell, Nibbable, AmityP
         }
         
         statusPollLabel.text = poll.isClosed ? AmityLocalizedStringSet.Poll.Option.finalResult.localizedString : pollStatus
-        voteCountLabel.text = "\(poll.voteCount.formatUsingAbbrevation()) \(AmityLocalizedStringSet.Poll.Option.voteCountTitle.localizedString)"
+        let actualUnit = String.localizedStringWithFormat("\(poll.voteCount)")
+        if poll.voteCount > 1 {
+            voteCountLabel.text = String.localizedStringWithFormat(AmityLocalizedStringSet.Poll.Option.voteCountTitles.localizedString, actualUnit)
+        } else {
+            voteCountLabel.text = String.localizedStringWithFormat(AmityLocalizedStringSet.Poll.Option.voteCountTitle.localizedString, actualUnit)
+        }
+        
         submitVoteButton.isHidden = poll.isClosed || poll.isVoted || !(post.feedType == .published)
         
         poll.answers.forEach { answer in
@@ -137,6 +148,14 @@ final public class AmityPostPollTableViewCell: UITableViewCell, Nibbable, AmityP
 }
 
 extension AmityPostPollTableViewCell: UITableViewDelegate {
+    
+    public func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if openPageByDetail {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.delegate?.loadTableViewPollFinish()
+            }
+        }
+    }
     
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         

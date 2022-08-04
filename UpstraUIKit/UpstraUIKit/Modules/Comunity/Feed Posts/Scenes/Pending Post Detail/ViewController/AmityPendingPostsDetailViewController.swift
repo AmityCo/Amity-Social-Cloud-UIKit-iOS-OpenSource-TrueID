@@ -127,6 +127,8 @@ extension AmityPendingPostsDetailViewController: AmityPostHeaderDelegate {
             let deleteOption = TextItemOption(title: AmityLocalizedStringSet.PendingPosts.alertDeleteTitle.localizedString) { [weak self] in
                 let alert = UIAlertController(title: AmityLocalizedStringSet.PendingPosts.alertDeleteTitle.localizedString,
                                               message: AmityLocalizedStringSet.PendingPosts.alertDeleteDesc.localizedString, preferredStyle: .alert)
+                alert.setTitle(font: AmityFontSet.title)
+                alert.setMessage(font: AmityFontSet.body)
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .default, handler: nil))
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive, handler: { _ in
                     self?.screenViewModel.action.deletePost()
@@ -143,6 +145,10 @@ extension AmityPendingPostsDetailViewController: AmityPostHeaderDelegate {
 }
 
 extension AmityPendingPostsDetailViewController: AmityPostDelegate {
+    
+    func loadTableViewPollFinish() {
+        
+    }
     
     private func presentPhotoViewer(media: AmityMedia, from cell: AmityPostGalleryTableViewCell) {
         let photoViewerVC = AmityPhotoViewerController(referencedView: cell.imageView, media: media)

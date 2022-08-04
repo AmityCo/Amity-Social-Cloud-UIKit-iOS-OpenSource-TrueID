@@ -61,6 +61,8 @@ final class AmityPostHeaderProtocolHandler: AmityPostHeaderDelegate {
             guard let strongSelf = self else { return }
             // delete option
             let alert = UIAlertController(title: AmityLocalizedStringSet.PostDetail.deletePostTitle.localizedString, message: AmityLocalizedStringSet.PostDetail.deletePostMessage.localizedString, preferredStyle: .alert)
+            alert.setTitle(font: AmityFontSet.title)
+            alert.setMessage(font: AmityFontSet.body)
             alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .default, handler: nil))
             alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive, handler: { _ in
                 strongSelf.delegate?.headerProtocolHandlerDidPerformAction(strongSelf, action: .tapDelete, withPost: post)
@@ -102,9 +104,11 @@ final class AmityPostHeaderProtocolHandler: AmityPostHeaderDelegate {
                     })
                     AmityAlertController.present(title: AmityLocalizedStringSet.Poll.Option.alertDeleteTitle.localizedString, message: AmityLocalizedStringSet.Poll.Option.alertDeleteDesc.localizedString, actions: [cancel, delete], from: viewController)
                 }
-                
-                contentView.configure(items: [closePoll, deletePoll], selectedItem: nil)
-                
+                if (post.poll?.isClosed ?? false) {
+                    contentView.configure(items: [deletePoll], selectedItem: nil)
+                } else {
+                    contentView.configure(items: [closePoll, deletePoll], selectedItem: nil)
+                }
             case .file, .image, .text, .video, .unknown:
                 contentView.configure(items: [editOption, deleteOption], selectedItem: nil)
             case .liveStream:

@@ -26,15 +26,20 @@ final class AmityCommunityProfileScreenViewModel: AmityCommunityProfileScreenVie
     let communityId: String
     private(set) var community: AmityCommunityModel?
     private(set) var memberStatusCommunity: AmityMemberStatusCommunity = .guest
+    var isModerator: Bool = false
+    var postId: String?
+    var fromDeeplinks: Bool
     
     var postCount: Int {
         return community?.object.getPostCount(feedType: .published) ?? 0
     }
     
-    init(communityId: String,
+    init(communityId: String, postId: String? = nil, fromDeeplinks: Bool = false,
          communityRepositoryManager: AmityCommunityRepositoryManagerProtocol) {
         self.communityId = communityId
         self.communityRepositoryManager = communityRepositoryManager
+        self.postId = postId
+        self.fromDeeplinks = fromDeeplinks
     }
     
 }
@@ -61,6 +66,22 @@ extension AmityCommunityProfileScreenViewModel {
             }
         }
     }
+    
+    func shouldShowPendingPostBannerForMember(_ completion: ((Bool) -> Void)?) {
+        guard let community = community, community.isPostReviewEnabled else {
+            completion?(false)
+            return
+        }
+        
+        communityRepositoryManager.getPendingPostsCount(by: .reviewing) { (result) in
+            switch result {
+            case .success(let postCount):
+                completion?(postCount != 0)
+            case .failure(_):
+                completion?(false)
+            }
+        }
+    }
 }
 
 // MARK: - Action
@@ -82,8 +103,9 @@ extension AmityCommunityProfileScreenViewModel {
             case .success(let community):
                 self?.community = community
                 self?.prepareDataToShowCommunityProfile(community: community)
+                self?.delegate?.screenViewModelRouteDeeplink()
             case .failure:
-                break
+                self?.delegate?.screenViewModelDidShowAlertDialog()
             }
         }
     }

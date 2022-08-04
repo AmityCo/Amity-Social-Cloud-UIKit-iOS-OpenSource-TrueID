@@ -7,12 +7,16 @@
 //
 
 import UIKit
+import AmitySDK
 
 /// A view controller for providing global post feed which consist of community feed and my own feed.
 public class AmityGlobalFeedViewController: AmityViewController {
     
     private var feedViewController: AmityFeedViewController!
     private let createPostButton: AmityFloatingButton = AmityFloatingButton()
+    
+    private var screenViewModel: AmityNewsFeedScreenViewModelType? = nil
+    private var permissionCanLive: Bool = false
     
     // MARK: - Initializer
     
@@ -38,6 +42,7 @@ public class AmityGlobalFeedViewController: AmityViewController {
     
     public override func viewDidLoad() {
         super.viewDidLoad()
+        setupScreenViewModel()
         setupFeedView()
         setupPostButton()
     }
@@ -48,13 +53,52 @@ public class AmityGlobalFeedViewController: AmityViewController {
         addChild(viewController: feedViewController)
     }
     
+    private func setupScreenViewModel() {
+        screenViewModel = AmityNewsFeedScreenViewModel()
+        screenViewModel?.delegate = self
+        fetchUserProfile()
+    }
+    
     private func setupPostButton() {
         createPostButton.image = AmityIconSet.iconCreatePost
         createPostButton.add(to: view, position: .bottomRight)
         createPostButton.actionHandler = { [weak self] button in
             guard let strongSelf = self else { return }
-            AmityEventHandler.shared.createPostBeingPrepared(from: strongSelf)
+            AmityEventHandler.shared.createPostBeingPrepared(from: strongSelf,liveStreamPermission: self?.permissionCanLive ?? false)
+//            let vc = AmityPostTargetPickerViewController.make()
+//            let nav = UINavigationController(rootViewController: vc)
+//            nav.modalPresentationStyle = .overFullScreen
+//            strongSelf.present(nav, animated: true, completion: nil)
         }
     }
     
 }
+
+
+// MARK: - Action
+extension AmityGlobalFeedViewController {
+    
+    func fetchUserProfile() {
+        screenViewModel?.fetchUserProfile(with: AmityUIKitManagerInternal.shared.currentUserId)
+    }
+    
+}
+// MARK: - Delegate
+extension AmityGlobalFeedViewController: AmityNewsFeedScreenViewModelDelegate {
+    
+    func didFetchUserProfile(user: AmityUser) {
+        switch AmityUIKitManagerInternal.shared.envByApiKey {
+        case .staging:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.stagingLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        case .production:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        default:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        }
+    }
+    
+}
+

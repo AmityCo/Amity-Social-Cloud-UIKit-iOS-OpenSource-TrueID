@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import AmitySDK
 
 /// A view controller for providing global feed with create post functionality.
 public class AmityNewsfeedViewController: AmityViewController, IndicatorInfoProvider {
@@ -15,23 +16,29 @@ public class AmityNewsfeedViewController: AmityViewController, IndicatorInfoProv
     }
     
     // MARK: - Properties
+    
     var pageTitle: String?
     
     private let emptyView = AmityNewsfeedEmptyView()
     private var headerView = AmityMyCommunityPreviewViewController.make()
     private let createPostButton: AmityFloatingButton = AmityFloatingButton()
-    private let feedViewController = AmityFeedViewController.make(feedType: .globalFeed)
+    private let feedViewController = AmityFeedViewController.make(feedType: .customPostRankingGlobalFeed)
+    private var screenViewModel: AmityNewsFeedScreenViewModelType? = nil
+    
+    private var permissionCanLive: Bool = false
     
     public override func viewDidLoad() {
         super.viewDidLoad()
+        setupScreenViewModel()
         setupFeedView()
         setupHeaderView()
         setupEmptyView()
-        setupPostButton()
+//        setupPostButton()
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        AmityEventHandler.shared.communityToNewsfeedTracking()
         headerView.retrieveCommunityList()
     }
     
@@ -44,8 +51,15 @@ public class AmityNewsfeedViewController: AmityViewController, IndicatorInfoProv
 // MARK: - Setup view
 private extension AmityNewsfeedViewController {
     
+    private func setupScreenViewModel() {
+        screenViewModel = AmityNewsFeedScreenViewModel()
+        screenViewModel?.delegate = self
+        fetchUserProfile()
+    }
+    
     private func setupFeedView() {
         addChild(viewController: feedViewController)
+        
         feedViewController.dataDidUpdateHandler = { [weak self] itemCount in
             self?.emptyView.setNeedsUpdateState()
         }
@@ -61,6 +75,7 @@ private extension AmityNewsfeedViewController {
     
     private func setupEmptyView() {
         emptyView.exploreHandler = { [weak self] in
+            AmityEventHandler.shared.communityExploreButtonTracking()
             guard let parent = self?.parent as? AmityCommunityHomePageViewController else { return }
             // Switch to explore tap which is an index 1.
             parent.setCurrentIndex(1)
@@ -81,8 +96,12 @@ private extension AmityNewsfeedViewController {
         createPostButton.add(to: view, position: .bottomRight)
         createPostButton.image = AmityIconSet.iconCreatePost
         createPostButton.actionHandler = { [weak self] _ in
+//            let vc = AmityPostTargetPickerViewController.make()
+//            let nvc = UINavigationController(rootViewController: vc)
+//            nvc.modalPresentationStyle = .fullScreen
+//            self?.present(nvc, animated: true, completion: nil)
             guard let strongSelf = self else { return }
-            AmityEventHandler.shared.createPostBeingPrepared(from: strongSelf)
+            AmityEventHandler.shared.createPostBeingPrepared(from: strongSelf,liveStreamPermission: self?.permissionCanLive ?? false)
         }
     }
     
@@ -101,6 +120,7 @@ extension AmityNewsfeedViewController: AmityMyCommunityPreviewViewControllerDele
     public func viewController(_ viewController: AmityMyCommunityPreviewViewController, didPerformAction action: AmityMyCommunityPreviewViewController.ActionType) {
         switch action {
         case .seeAll:
+            AmityEventHandler.shared.communityMyCommunitySectionTracking()
             let vc = AmityMyCommunityViewController.make()
             navigationController?.pushViewController(vc, animated: true)
         case .communityItem(let communityId):
@@ -116,3 +136,31 @@ extension AmityNewsfeedViewController: AmityMyCommunityPreviewViewControllerDele
         }
     }
 }
+
+// MARK: - Action
+extension AmityNewsfeedViewController {
+    
+    func fetchUserProfile() {
+        screenViewModel?.fetchUserProfile(with: AmityUIKitManagerInternal.shared.currentUserId)
+    }
+    
+}
+// MARK: - Delegate
+extension AmityNewsfeedViewController: AmityNewsFeedScreenViewModelDelegate {
+    
+    func didFetchUserProfile(user: AmityUser) {
+        switch AmityUIKitManagerInternal.shared.envByApiKey {
+        case .staging:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.stagingLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        case .production:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        default:
+            let summaryRoles = user.roles + AmityUIKitManagerInternal.shared.productionLiveRoleID
+            Array(Dictionary(grouping: summaryRoles, by: {$0}).filter { $1.count > 1 }.keys).count > 0 ? (permissionCanLive = true) : (permissionCanLive = false)
+        }
+    }
+    
+}
+

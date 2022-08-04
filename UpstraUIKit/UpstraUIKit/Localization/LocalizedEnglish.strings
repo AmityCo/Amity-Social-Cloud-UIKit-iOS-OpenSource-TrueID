@@ -1,13 +1,3 @@
-/* 
-  AmityLocalizable.strings
-  AmityUIKit
-
-  Created by Sarawoot Khunsri on 8/6/2563 BE.
-  Copyright © 2563 Amity Communication. All rights reserved.
-*/
-
-// MARK: - General
-
 "general_report" = "Report";
 "general_undo_report" = "Undo Report";
 "general_report_user" = "Report user";
@@ -53,10 +43,11 @@
 "general_video" = "Video";
 "general_photo" = "Photo";
 "general_attachment" = "Attachment";
-
+"general_comment" = "Comment";
+"general_share" = "Share";
+"general_search" = "Search";
 "title_placeholder" = "Title";
 "description_placeholder" = "Description";
-
 "unit_like_singular" = "%@ like";
 "unit_like_plural" = "%@ likes";
 "unit_comment_singular" = "%@ comment";
@@ -67,18 +58,15 @@
 "unit_post_plural" = "%@ posts";
 "unit_share_singular" = "%@ share";
 "unit_share_plural" = "%@ shares";
-
 "unit_day_singular" = "%@ day";
 "unit_day_plural" = "%@ days";
 "unit_hour_singular" = "%@ hour";
 "unit_hour_plural" = "%@ hours";
 "unit_minute_singular" = "%@ minute";
 "unit_minute_plural" = "%@ minutes";
-
 "chat_title" = "Chat";
 "recent_title" = "Recent";
 "directory_title" = "Directory";
-
 "edit_message_title" = "Edit message";
 "view_all_comments_title" = "View all comments...";
 "view_all_files_title" = "View all files";
@@ -90,18 +78,17 @@
 "search_account_not_found" = "No account found";
 "communities" = "Communities";
 "accounts" = "Accounts";
-
 "text_message_placeholder" = "Type message";
-
 "message_delete" = "Message deleted • %@";
 "message_edit" = "Edited • %@";
 "message_readmore" = "...Read more";
-
-"something_went_wrong_with_try_again"= "Something went wrong. Please try again later.";
+"something_went_wrong_with_try_again" = "Something went wrong. Please try again later.";
 "no_internet_connection" = "No internet connection";
-
-// MARK: - Message List
 "message_list_alert_error_message_title" = "Error sending message";
+"recent_chat_no_message" = "No message yet";
+"recent_chat_announcement_message" = "Explore new friends in TrueID ";
+"recent_chat_announcement_message_ext" = " then tap on user avatar who you want to chat with";
+"recent_chat_underline_message" = "\"Tap here\"";
 "message_list_alert_error_message_desc" = "Please try again";
 "message_list_alert_delete_error_title" = "Your message was not sent";
 "message_list_alert_delete_title" = "Delete this message?";
@@ -109,8 +96,6 @@
 "message_list_sending" = "Sending...";
 "message_list_hold_to_record" = "Hold to record";
 "message_list_release_to_send" = "Release to send";
-
-// MARK: - Empty
 "empty_chat_list" = "No conversations";
 "empty_newsfeed_title" = "Your feed is empty";
 "empty_newsfeed_subtitle" = "Find community or create your own";
@@ -118,12 +103,8 @@
 "empty_newsfeed_create_button" = "Create community";
 "empty_newsfeed_start_your_first_post" = "Start your first post";
 "empty_title_no_posts" = "No posts yet";
-
-// MARK: - User Feed
 "private_user_feed_title" = "This account is private";
 "private_user_feed_subtitle" = "Follow this user to see all posts";
-
-// MARK: - Amity Create Community
 "edit_community_title" = "Edit Community";
 "create_community_title" = "Create Community";
 "create_community_name_title" = "Community name";
@@ -143,33 +124,19 @@
 "create_community_button_create" = "Create community";
 "create_community_alert_title" = "Leave without finishing?";
 "create_community_alert_desc" = "Your progress won't be saved and your group won't be created.";
-
-// MARK: - Select Member List
 "select_member_list_title" = "Select member";
 "select_member_list_selected_title" = "%@ Selected";
-
-// MARK: - Category selection
 "category_selection_title" = "Select category";
 "category_selection_title_2" = "Category";
-
-// MARK: - My Community
 "my_community_title" = "My Community";
 "my_community_see_all" = "See all";
-// MARK: - Newsfeed
 "newsfeed_title" = "Newsfeed";
-
-// MARK: - Explore
 "explore_title" = "Explore";
-
-// MARK: - Community home page
+"discovery_title" = "Discovery";
 "community_home_title" = "Community";
-
-// MARK: - Community detail page
 "community_detail_join_button" = "Join";
 "community_detail_message_button" = "Message";
 "community_detail_edit_profile_button" = "Edit Profile";
-
-// MARK: - User detail page
 "user_detail_following_count" = "%@ following";
 "user_detail_followers_count" = "%@ followers";
 "user_detail_follow_button_follow" = "Follow";
@@ -177,11 +144,7 @@
 "user_details_pending_requests" = "Pending requests";
 "user_details_pending_requests_description" = "Your requests are waiting for review";
 "user_details_unable_to_follow" = "Unable to follow %@";
-
-// MARK: - Timeline
 "timeline_title" = "Timeline";
-
-// MARK: - Post creation
 "post_creation_edit_post" = "Edit post";
 "post_creation_my_timeline" = "My Timeline";
 "post_creation_text_placeholder" = "What’s going on...";
@@ -230,23 +193,13 @@
 "post_detail_delete_post_message" = "This post will be permanently deleted. You’ll no longer to see and find this post";
 "post_detail_banned_comment_error_message" = "Sorry, your comment has been deleted due to containing inappropriate words.\nPlease contact the administrator for more information.";
 "post_detail_comment_edited" = "%@ • Edited";
-
-// MARK: - Post to
 "post_to_title" = "Post to";
 "post_to_post_as_community_title" = "Post as Community";
 "post_to_post_as_community_message" = "This option allows you to post on behalf of the community account.";
-
-// MARK: - Recommended Community
 "recommended_community_title" = "Recommended for you";
-
-// MARK: - Trending Community
 "trending_community_title" = "Today’s Trending";
 "trending_community_members" = "• %@ members";
-
-// MARK: - Categories
 "category_title" = "Categories";
-
-// MARK: - Community Settings
 "community_settings_item_header_basic_info" = "Basic info";
 "community_settings_item_header_community_permissions" = "Community permissions";
 "community_settings_item_title_edit_profile" = "Edit profile";
@@ -267,8 +220,6 @@
 "community_settings_alert_fail_title_close" = "Unable to close community";
 "community_settings_alert_fail_title_notification_on" = "Unable to turn on notifications";
 "community_settings_alert_fail_title_notification_off" = "Unable to turn off notifications";
-
-// MARK: - Notification Settings
 "community_notification_settings_title_notifications" = "Allow notifications";
 "community_notification_settings_description_notifications" = "Turn on to receive push notifications from this community.";
 "community_notification_settings_title_reacts_posts" = "React posts";
@@ -285,8 +236,6 @@
 "community_notification_settings_comment" = "Comments";
 "community_notification_settings_everyone" = "Everyone";
 "community_notification_settings_only_moderator" = "Only moderator";
-
-// MARK: - User Settings
 "user_settings_item_header_manage" = "Manage";
 "user_settings_item_header_basic_info" = "Basic info";
 "user_settings_item_unfollow" = "Unfollow";
@@ -298,12 +247,7 @@
 "user_settings_remove_user" = "Remove user";
 "user_settings_remove_user_title" = "Remove %@ from follwers?";
 "user_settings_remove_user_description" = "We won’t notify %@ that they’ve been remove from your followers";
-
-
-// MARK: - Not support role
 "role_permission_alert_desc" = "You don't have permission to perform this action right now , please contact administrator for more info.";
-
-// MARK: - Community member settings
 "community_member_settings_title" = "Members";
 "community_member_settings_moderator_title" = "Moderators";
 "community_member_settings_options_promote_to_moderator" = "Promote to moderator";
@@ -311,8 +255,6 @@
 "community_member_settings_options_remove" = "Remove from community";
 "community_member_settings_alert_title" = "Remove user from community?";
 "community_member_settings_alert_desc" = "This user won't no longer be able to search, post and interact in this community";
-
-// MARK: - Community
 "community_alert_unable_to_perform_action_title" = "Unable to perform this action";
 "community_alert_unable_to_perform_action_desc" = "You no longer have permission to make any changes in this community";
 "community_alert_unable_to_leave_community_title" = "Unable to leave community";
@@ -325,34 +267,22 @@
 "edit_user_profile_email_title" = "Email";
 "edit_user_profile_phone_number_title" = "Phone number";
 "edit_user_profile_description_title" = "About";
-
-// MARK: - Profile Option
 "profile_option_title" = "Profile Settings";
 "profile_option_edit" = "Edit Profile";
 "profile_option_logout" = "Logout";
-
-// MARK: - HUD Message
+"hud_loading" = "Loading...";
 "hud_somthing_went_wrong" = "Oops!\nSomething went wrong";
 "hud_successfully_created" = "Successfully\ncreated";
 "hud_successfully_updated" = "Successfully\nupdated";
 "hud_report_sent" = "Report sent";
 "hud_unreport_sent" = "Unreport sent";
 "hud_delete" = "Delete";
-
-
-// MARK: - Popover Text Message
 "popover_message_is_too_short" = "Message is too short.";
-
-// MARK: - Post Sharing type
 "share_to_my_timeline" = "Share to My Timeline";
 "share_to_group" = "Share to Group";
 "more_options" = "More options";
-
-// MARK: - Post
 "post_place_holder_title" = "Something went wrong";
 "post_place_holder_desc" = "We couldn’t recognize this post.";
-
-// MARK: - Post review setting
 "post_review_settings_title" = "Post review";
 "post_review_settings_item_title_approve_member_posts" = "Approve member posts";
 "post_review_settings_item_desc_approve_member_posts" = "Posts by members have to be reviewed and approved by community moderator.";
@@ -361,15 +291,11 @@
 "post_review_settings_hud_title_turn_off_post_review" = "Pending posts\nare posted";
 "post_review_settings_alert_fail_title_turn_on" = "Unable to turn on post review";
 "post_review_settings_alert_fail_title_turn_off" = "Unable to turn off post review";
-
-// MARK: - Modal
 "modal_community_settings_title" = "Customize your community";
 "modal_community_settings_desc" = "You’ve successfully created a community! Now let's manage permissions that work best for you";
-
-// MARK: - Member
+"modal_community_not_found_title" = "Content Not Available";
+"modal_community_not_found_desc" = "This content is currently not available in your country or removed.";
 "member_list_title" = "Members";
-
-// MARK: - Chat Settings
 "chat_setting_leave_channel" = "Leave Chat";
 "chat_setting_member" = "Members";
 "chat_setting_group_profile" = "Group profile";
@@ -388,11 +314,7 @@
 "chat_setting_member_detail_title" = "Member Details";
 "chat_setting_remove_member_alert_title" = "Remove user from group chat?";
 "chat_setting_remove_member_alert_body" = "The user won't no longer be able to see this group chat";
-
-/// MARK: - Create Community Channel
 "chat_create_failed" = "Something went wrong while creating the chat.";
-
-// MARK: - Follow
 "follow_requests_title" = "Follow requests";
 "follow_accept" = "Accept";
 "follow_decline" = "Decline";
@@ -400,12 +322,11 @@
 "follow_followers" = "Followers";
 "follow_following" = "Following";
 "follow_can_not_refresh_feed" = "Couldn’t refresh feed";
-// MARK: - Pending Posts
 "pending_posts_title" = "Pending posts";
 "pending_posts_status_title" = "Pending posts";
 "pending_posts_status_admin_desc" = "%d Posts need to approval";
 "pending_posts_status_member_desc" = "Your posts are pending for review";
-"pending_posts_header_title" =  "Decline pending post will permanently delete the selected post from community.";
+"pending_posts_header_title" = "Decline pending post will permanently delete the selected post from community.";
 "pending_posts_empty_title" = "No pending posts";
 "pending_posts_alert_delete_title" = "Delete post";
 "pending_posts_alert_delete_desc" = "This post will be permanently deleted from the pending list";
@@ -413,32 +334,47 @@
 "pending_posts_post_not_available" = "Post is not available";
 "pending_posts_alert_delete_fail_approve_or_decline" = "Your post has been reviewed.\nCheck your feed if it got approved";
 
-// MARK: - Poll
-"poll_create_question_title" = "Poll question";
-"poll_create_question_placeholder" = "What's your poll question";
+"amity_general_poll" = "Poll";
+"amity_general_stop" = "Stop";
+"amity_poll_question" = "Poll question";
+"poll_create_question_placeholder" = "What’s your poll question?";
+"amity_poll_question_error" = "You have reached 500 characters limit.";
 "poll_create_answer_title" = "Options";
 "poll_create_answer_desc" = "Create at least 2 options";
-"poll_create_answer_placeholder" = "Add option";
 "poll_create_answer_button" = "Add option";
+"amity_poll_answer_error_empty" = "Poll option can’t be empty.";
+"amity_poll_answer_error_exceed_limit" = "You have reached 200 characters limit.";
 "poll_create_multiple_selection_title" = "Multiple selection";
 "poll_create_multiple_selection_desc" = "Turn on to allow others to vote more than one option";
 "poll_create_schedule_title" = "Schedule poll (Optional)";
+"amity_poll_closed_in_error" = "You can set up to 30 days";
+"amity_poll_closed_in_hint" = "Poll will be automatically closed at the end of chosen time frame. You can set up to 30 days";
+"amity_poll_closed_in_dialog" = "Enter time frame (days)";
+"poll_final_result" = "Final results";
+"poll_submit_vote_title" = "Submit vote";
+"amity_poll_status_closed_in_day" = "Poll ends in %@ day";
+"amity_poll_status_closed_in_days" = "Poll ends in %@ days";
+"amity_poll_status_closed_in_hour" = "Poll ends in %@ hour";
+"amity_poll_status_closed_in_hours" = "Poll ends in %@ hours";
+"amity_poll_status_closed_in_minute" = "Poll ends in %@ minute";
+"amity_poll_status_closed_in_minutes" = "Poll ends in %@ minutes";
+"amity_poll_vote_count" = "%@ Vote";
+"amity_poll_vote_counts" = "%@ Votes";
+"amity_poll_expand" = "%@ more option";
+"amity_poll_expands" = "%@ more options";
+"poll_view_full_result" = "View full results";
+"amity_delete_poll_title" = "Delete poll?";
+"poll_alert_delete_desc" = "This poll will be permanently deleted. You’ll no longer to see and find this poll.";
+"amity_close_poll_title" = "Close poll?";
+"poll_alert_close_desc" = "Schedule you’ve set will be removed and poll will be closed immediately.";
+"poll_delete_title" = "Delete Poll";
+"poll_close_title" = "Close Poll";
 "poll_create_schedule_desc" = "Poll will be automatically closed at the end of chosen time frame (UTC)";
 "poll_create_choose_time_frame_title" = "Choose time frame";
 "poll_create_alert_title" = "Leave without finishing?";
 "poll_create_alert_desc" = "Your progress won’t be saved and poll won’t be created.";
-
-"poll_close_title" = "Close poll";
-"poll_delete_title" = "Delete poll";
 "poll_more_options" = "more options";
-"poll_view_full_result" = "View full results";
-"poll_alert_close_title" = "Close poll";
-"poll_alert_close_desc" = "Schedule you’ve set will be removed and poll will be closed immediately.";
-"poll_alert_delete_title" = "Delete this poll";
-"poll_alert_delete_desc" = "This poll will be permanently deleted. You’ll no longer to see and find this poll";
-"poll_submit_vote_title" = "Submit vote";
-"poll_vote_count_title" = "votes";
-"poll_final_result" = "Final results";
+"poll_vote_count_title" = "vote";
 "poll_open_for_voting" = "Open for voting";
 "poll_ends_in_days" = "Poll ends in %@";
 "poll_ends_in_minutes" = "Poll ends in %@";
@@ -449,3 +385,57 @@
 "mention_unable_to_mention_post_description" = "You have reached maximum 30 mentioned users in a post.";
 "mention_unable_to_mention_comment_description" = "You have reached maximum 30 mentioned users in a comment.";
 "mention_unable_to_mention_reply_description" = "You have reached maximum 30 mentioned users in a reply.";
+
+"relative_time_year" = "year";
+"relative_time_month" = "month";
+"relative_time_week" = "week";
+"relative_time_yesterday" = "Yesterday";
+"relative_time_day" = "day";
+"relative_time_hour" = "hour";
+"relative_time_minute" = "minute";
+"relative_time_just_now" = "Just now";
+"relative_time_ago" = " ago";
+"error_title" = "Error";
+"error_message_title" = "Report Inappropriate Message";
+"error_message_post_banword" = "Your post contain inappropriate language that is against True ID community guidelines. Your post will not be published.";
+"error_message_comment_banword" = "Your comment contain inappropriate language that is against True ID community guidelines. Your comment will not be published.";
+"error_message_user_is_banned" = "Your account have been suspended. The content of your message violates TrueID policy in regards to spamming, inappropriate use of language, racism, discrimination or defamation.";
+"error_message_link_not_allowed" = "Link is not allowed.";
+"error_message_link_not_allowed_detail" = "Your link is not authorized by TrueID, the team reserves the right to share your link.";
+"error_message_default" = "Oops, something went wrong. Please try again.";
+"error_message_connection_error" = "Oops, something went wrong. Please try again.";
+"community_detail_joined_button" = "Joined";
+
+"amity_video_stream_title" = "Livestream";
+"amity_video_stream_live" = "Live";
+"amity_video_stream_recorded" = "Recorded";
+"amity_video_stream_ended_title" = "This livestream has ended.";
+"amity_video_stream_ended_description" = "Playback will be available for you to watch shortly.";
+"amity_video_stream_thumbnail_change" = "Change cover image";
+"amity_video_stream_thumbnail_remove" = "Delete cover image";
+"amity_video_stream_unavailable_description" = "This stream is currently unavailable";
+"amity_video_stream_go_live" = "Go live";
+"amity_video_stream_title_hint" = "Livestream title";
+"amity_video_stream_description_hint" = "Tap to add post description…";
+"amity_video_stream_connecting" = "Connecting";
+"amity_video_stream_live_with_time" = "LIVE %@:%@";
+"amity_video_stream_finish" = "Finish";
+"amity_video_stream_stop_confirmation_title" = "Stop livestream";
+"amity_video_stream_stop_confirmation_description" = "Are you sure you want to stop the stream?";
+"amity_video_stream_player_error" = "Sorry, unable to play this stream";
+"amity_general_stop" = "Stop";
+"amity_video_stream_ending_live_stream" = "Ending Live Stream";
+"amity_video_stream_select_cover" = "Select Cover";
+"amity_video_stream_input_error" = "Input Error";
+"amity_video_stream_title_can_not_be_empty" = "Title can not be empty.";
+"amity_video_stream_description_can_not_be_empty" = "Description can not be empty.";
+"amity_video_stream_unable_to_find_live_stream_data" = "Unable to find live stream data in post.";
+"amity_video_stream_unable_to_find_post_data" = "Unable to find post data";
+"amity_video_stream_unable_to_find_create_stream" = "Unable to find create stream result";
+"amity_video_stream_permision_requires" = "Permission Required";
+"amity_video_stream_grant_permision_camera_and_microphone" = "Please grant permission camera and microphone in iOS settings.";
+"amity_video_stream_title_photo" = "Photo";
+"amirt_video_stream_please_allow_access_photo" = "Please allow access photo library";
+"amirt_video_stream_please_allow_access_camera" = "Please allow access camera library";
+"community_title" = "Community";
+"community_search" = "Search";

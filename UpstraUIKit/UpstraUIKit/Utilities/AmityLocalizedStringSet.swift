@@ -18,20 +18,20 @@ import UIKit
 /// AmityLocalizedStringSet.General.ok = {CUSTOM_STRING}
 /// ```
 public struct AmityLocalizedStringSet {
-    private init() { }
+    public init() { }
     
     public enum General {
         static let report = "general_report"
         static let undoReport = "general_undo_report"
         static let reportUser = "general_report_user"
         static let unreportUser = "general_unreport_user"
-        static let settings = "general_settings"
+        public static let settings = "general_settings"
         static let accept = "general_accept"
         static let decline = "general_decline"
         static let close = "general_close"
         static let save = "general_save"
         static let saved = "general_saved"
-        static let cancel = "general_cancel"
+        public static let cancel = "general_cancel"
         static let delete = "general_delete"
         static let edit = "general_edit"
         public static let done = "general_done"
@@ -66,6 +66,8 @@ public struct AmityLocalizedStringSet {
         static let generalVideo = "general_video";
         static let generalPhoto = "general_photo";
         static let generalAttachment = "general_attachment";
+        static let comment = "general_comment"
+        static let share = "general_share"
     }
     
     static let communitySettings = "community_settings"
@@ -110,6 +112,15 @@ public struct AmityLocalizedStringSet {
     
     static let somethingWentWrongWithTryAgain = "something_went_wrong_with_try_again"
     static let noInternetConnection = "no_internet_connection"
+    
+    // MARK: - Recent Message
+    enum RecentMessage {
+        static let noMessage = "recent_chat_no_message"
+        static let announcementMessage = "recent_chat_announcement_message"
+        static let announcementMessageExt = "recent_chat_announcement_message_ext"
+        static let announcementUnderlineMessage = "recent_chat_underline_message"
+    }
+    
     
     // MARK: - Message List
     enum MessageList {
@@ -174,11 +185,17 @@ public struct AmityLocalizedStringSet {
     // MARK: - Explore
     public static let exploreTitle = "explore_title"
     
+    // MARK: - Discovery
+    public static let discoveryTitle = "discovery_title"
+    
     // MARK: - Community home page
     public static let communityHomeTitle = "community_home_title"
+    public static let communityTitle = "community_title"
+    public static let communitySearchTitle = "community_search"
     
     // MARK: - Community detail page
     static let communityDetailJoinButton = "community_detail_join_button"
+    static let communityDetailJoinedButton = "community_detail_joined_button"
     static let communityDetailMessageButton = "community_detail_message_button"
     static let communityDetailEditProfileButton = "community_detail_edit_profile_button"
     
@@ -364,12 +381,18 @@ public struct AmityLocalizedStringSet {
     
     // MARK: - HUD Message
     struct HUD {
+        static let loading = "hud_loading"
         static let somethingWentWrong = "hud_somthing_went_wrong"
         static let successfullyCreated = "hud_successfully_created"
         static let successfullyUpdated = "hud_successfully_updated"
         static let reportSent = "hud_report_sent"
         static let unreportSent = "hud_unreport_sent"
         static let delete = "hud_delete"
+    }
+    
+    // MARK: - HUD Message
+    public struct LiveStreamViewver {
+        public static let somethingWentWrong = "hud_somthing_went_wrong"
     }
     
     enum PopoverText {
@@ -404,6 +427,8 @@ public struct AmityLocalizedStringSet {
     enum Modal {
         static let communitySettingsTitle = "modal_community_settings_title"
         static let communitySettingsDesc = "modal_community_settings_desc"
+        static let contentNotfoundTitle = "modal_community_not_found_title"
+        static let contentNotfoundDesc = "modal_community_not_found_desc"
     }
     
     // MARK: - Chat setting
@@ -457,15 +482,59 @@ public struct AmityLocalizedStringSet {
         static let alertDeleteFailApproveOrDecline = "pending_posts_alert_delete_fail_approve_or_decline"
     }
     
+    // MARK: - LiveStream
+    public enum LiveStream {
+        
+        public enum Create {
+            public static let titleName = "amity_video_stream_title"
+            public static let selectCover = "amity_video_stream_select_cover"
+            public static let title = "amity_video_stream_title_hint"
+            public static let description = "amity_video_stream_description_hint"
+            public static let goLive = "amity_video_stream_go_live"
+        }
+        
+        public enum Live {
+            public static let live = "amity_video_stream_live"
+            public static let connecting = "amity_video_stream_connecting"
+            public static let finish = "amity_video_stream_finish"
+            public static let titleStopLive = "amity_video_stream_stop_confirmation_title"
+            public static let descriptionStopLive = "amity_video_stream_stop_confirmation_description"
+            public static let stopLive = "amity_general_stop"
+            public static let endingLiveStream = "amity_video_stream_ending_live_stream"
+            public static let findPostLiveStreamData = "amity_video_stream_unable_to_find_live_stream_data"
+            public static let findPostData = "amity_video_stream_unable_to_find_post_data"
+            public static let findPostStremData = "amity_video_stream_unable_to_find_create_stream"
+            public static let recorded = "amity_video_stream_recorded"
+        }
+        
+        public enum Alert {
+            public static let imputError = "amity_video_stream_input_error"
+            public static let titleCanNotEmpty = "amity_video_stream_title_can_not_be_empty"
+            public static let descriptionCanNotEmpty = "amity_video_stream_description_can_not_be_empty"
+            public static let titleAlertPermission = "amity_video_stream_permision_requires"
+            public static let descriptionAlertPermission = "amity_video_stream_grant_permision_camera_and_microphone"
+            public static let titleAlerpermissionPhoto = "amity_video_stream_title_photo"
+            public static let descriptionAlertPermissionPhoto = "amirt_video_stream_please_allow_access_photo"
+        }
+        
+        public enum Show {
+            public static let unavailable = "amity_video_stream_unavailable_description"
+            public static let ensesTitle = "amity_video_stream_ended_title"
+            public static let playback = "amity_video_stream_ended_description"
+        }
+        
+    }
+    
+    
     // MARK: - Polls
     enum Poll {
         
         enum Create {
-            static let questionTitle = "poll_create_question_title"
+            static let questionTitle = "amity_poll_question"
             static let questionPlaceholder = "poll_create_question_placeholder"
             static let answerTitle = "poll_create_answer_title"
             static let answerDesc = "poll_create_answer_desc"
-            static let answerPlaceholder = "poll_create_answer_placeholder"
+            static let answerPlaceholder = "poll_create_answer_button"
             static let answerButton = "poll_create_answer_button"
             static let multipleSelectionTitle = "poll_create_multiple_selection_title"
             static let multipleSelectionDesc = "poll_create_multiple_selection_desc"
@@ -479,20 +548,26 @@ public struct AmityLocalizedStringSet {
         enum Option {
             static let closeTitle = "poll_close_title"
             static let deleteTitle = "poll_delete_title"
-            static let moreOption = "more options";
+            static let moreOption = "amity_poll_expand";
+            static let moreOptions = "amity_poll_expands";
             static let viewFullResult = "poll_view_full_result"
-            static let alertCloseTitle = "poll_alert_close_title"
+            static let alertCloseTitle = "amity_close_poll_title"
             static let alertCloseDesc = "poll_alert_close_desc"
-            static let alertDeleteTitle = "poll_alert_delete_title"
+            static let alertDeleteTitle = "amity_delete_poll_title"
             static let alertDeleteDesc = "poll_alert_delete_desc"
             static let submitVoteTitle = "poll_submit_vote_title"
-            static let voteCountTitle = "poll_vote_count_title"
+            static let voteCountTitle = "amity_poll_vote_count"
+            static let voteCountTitles = "amity_poll_vote_counts"
             static let finalResult = "poll_final_result"
             static let openForVoting = "poll_open_for_voting"
             
-            static let pollEndDurationDays = "poll_ends_in_days"
-            static let pollEndDurationMinutes = "poll_ends_in_minutes"
-            static let pollEndDurationHours = "poll_ends_in_hours"
+            static let pollEndDurationDay = "amity_poll_status_closed_in_day"
+            static let pollEndDurationDays = "amity_poll_status_closed_in_days"
+            static let pollEndDurationMinute = "amity_poll_status_closed_in_minute"
+            static let pollEndDurationMinutes = "amity_poll_status_closed_in_minutes"
+            static let pollEndDurationHour = "amity_poll_status_closed_in_hour"
+            static let pollEndDurationHours = "amity_poll_status_closed_in_hours"
+            
         }
     }
     
@@ -503,4 +578,31 @@ public struct AmityLocalizedStringSet {
         public static let unableToMentionCommentDescription = "mention_unable_to_mention_comment_description"
         public static let unableToMentionReplyDescription = "mention_unable_to_mention_reply_description"
     }
+    // MARK: - Relative Time
+    struct RelativeTime {
+        static let year = "relative_time_year"
+        static let month = "relative_time_month"
+        static let week = "relative_time_week"
+        static let Yesterday = "relative_time_yesterday"
+        static let day = "relative_time_day"
+        static let hour = "relative_time_hour"
+        static let minute = "relative_time_minute"
+        static let justNow = "relative_time_just_now"
+        static let ago = "relative_time_ago"
+    }
+    
+    // MARK: - Error Handling
+    public struct ErrorHandling {
+        public static let errorTitle = "error_title"
+        static let errorMessageTitle = "error_message_title"
+        static let errorMessagePostBanword = "error_message_post_banword"
+        static let errorMessageCommentBanword = "error_message_comment_banword"
+        static let errorMessageUserIsBanned = "error_message_user_is_banned"
+        static let errorMessageLinkNotAllowed = "error_message_link_not_allowed"
+        static let errorMessageLinkNotAllowedDetail = "error_message_link_not_allowed_detail"
+        static let errorMessageDefault = "error_message_default"
+        static let errorMessageConnectionError = "error_message_connection_error"
+    }
+    
+    
 }

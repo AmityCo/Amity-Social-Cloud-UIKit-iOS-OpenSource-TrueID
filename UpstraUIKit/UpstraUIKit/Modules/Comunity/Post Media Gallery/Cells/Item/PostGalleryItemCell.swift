@@ -19,6 +19,7 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
     @IBOutlet private weak var streamStateContainer: UIView!
     @IBOutlet private weak var streamStateLabel: UILabel!
     
+    @IBOutlet private weak var mediaPlayIcon: UIImageView!
     @IBOutlet private weak var mediaTitleLabel: UILabel!
     
     @IBOutlet private weak var streamEndView: UIView!
@@ -87,6 +88,7 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
             durationText = nil
             mediaTitle = nil
             streamStatus = nil
+            mediaPlayIcon.isHidden = true
         case "video":
             let thumbnailInfo = post.getVideoThumbnailInfo()
             let videoInfo = post.getVideoInfo(for: .original)
@@ -105,6 +107,7 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
             durationText = PostGalleryItemCell.durationFormatter.string(from: duration)
             mediaTitle = nil
             streamStatus = nil
+            mediaPlayIcon.isHidden = false
         case "liveStream":
             let livestreamPlaceholder = UIImage(named: "default_livestream", in: AmityUIKitManager.bundle, compatibleWith: nil)
             if let streamInfo = post.getLiveStreamInfo() {
@@ -124,12 +127,120 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
                 placeholder = livestreamPlaceholder
             }
             durationText = nil
+            mediaPlayIcon.isHidden = true
         default:
             durationText = nil
             streamStatus = nil
             mediaTitle = nil
             imageUrl = nil
             placeholder = nil
+            mediaPlayIcon.isHidden = true
+        }
+        
+        // Render UI from properties above.
+        
+        // imageUrl, placeholder
+        asyncLoadImage(urlString: imageUrl, placeholder: placeholder)
+        
+        // durationText
+        if let durationText = durationText {
+//            durationView.isHidden = false
+            durationLabel.text = durationText
+        } else {
+//            durationView.isHidden = true
+        }
+        
+        // streamEndView
+        if let streamStatus = streamStatus {
+            
+            streamEndTitleLabel.font = AmityFontSet.title
+            streamEndDescriptionLabel.font = AmityFontSet.body
+            
+            streamStateLabel.font = AmityFontSet.captionBold
+            streamStateLabel.textColor = .white
+            
+            switch streamStatus {
+            case .idle:
+                streamEndView.isHidden = false
+                streamEndTitleLabel.text = AmityLocalizedStringSet.LiveStream.Show.unavailable.localizedString
+                streamEndDescriptionLabel.text = nil
+                streamEndDescriptionLabel.isHidden = true
+            case .ended:
+                streamEndView.isHidden = false
+                streamEndTitleLabel.text = AmityLocalizedStringSet.LiveStream.Show.ensesTitle.localizedString
+                streamEndDescriptionLabel.text = AmityLocalizedStringSet.LiveStream.Show.playback.localizedString
+                streamEndDescriptionLabel.isHidden = false
+            default:
+                streamEndView.isHidden = true
+            }
+        } else {
+            streamEndView.isHidden = true
+        }
+        
+        // streamStatus
+        if let streamStatus = streamStatus {
+            switch streamStatus {
+            case .live:
+                streamStateContainer.isHidden = false
+                streamStateContainer.backgroundColor = UIColor(hex: "FF305A")
+                streamStateLabel.text = AmityLocalizedStringSet.LiveStream.Live.live.localizedString
+            case .recorded:
+                streamStateContainer.isHidden = false
+                streamStateContainer.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+                streamStateLabel.text = AmityLocalizedStringSet.LiveStream.Live.recorded.localizedString
+            default:
+                streamStateContainer.isHidden = true
+            }
+        } else {
+            streamStateContainer.isHidden = true
+        }
+        
+        // mediaTitle
+        if let mediaTitle = mediaTitle {
+            mediaTitleLabel.isHidden = false
+            mediaTitleLabel.text = mediaTitle
+        } else {
+            mediaTitleLabel.isHidden = true
+        }
+        
+        darkOverlayView.isHidden = (mediaTitleLabel.isHidden && streamStateContainer.isHidden)
+        
+    }
+    
+    func configure(withDisModel model: DiscoveryDataModel) {
+        
+        // Properties to render
+        let durationText: String?
+        let streamStatus: AmityStreamStatus?
+        let mediaTitle: String?
+        let imageUrl: String?
+        let placeholder: UIImage?
+        
+        let postDatatype = model.dataType
+        
+        // Find properties value from post.
+        switch postDatatype {
+        case "image":
+            imageUrl = model.file_url
+            placeholder = nil
+            durationText = nil
+            mediaTitle = nil
+            streamStatus = nil
+            mediaPlayIcon.isHidden = true
+        case "video":
+            imageUrl = model.file_url
+            placeholder = nil
+            durationText = nil
+            mediaTitle = nil
+            streamStatus = nil
+            mediaPlayIcon.isHidden = false
+        default:
+            durationText = nil
+            streamStatus = nil
+            mediaTitle = nil
+            imageUrl = nil
+            placeholder = nil
+            mediaPlayIcon.isHidden = true
         }
         
         // Render UI from properties above.
@@ -145,50 +256,7 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
             durationView.isHidden = true
         }
         
-        // streamEndView
-        if let streamStatus = streamStatus {
-            
-            streamEndTitleLabel.font = AmityFontSet.title
-            streamEndDescriptionLabel.font = AmityFontSet.body
-            
-            streamStateLabel.font = AmityFontSet.captionBold
-            streamStateLabel.textColor = .white
-            
-            switch streamStatus {
-            case .idle:
-                streamEndView.isHidden = false
-                streamEndTitleLabel.text = "The stream is currently unavailable."
-                streamEndDescriptionLabel.text = nil
-                streamEndDescriptionLabel.isHidden = true
-            case .ended:
-                streamEndView.isHidden = false
-                streamEndTitleLabel.text = "This livestream has ended."
-                streamEndDescriptionLabel.text = "Playback will be available for you to watch shortly."
-                streamEndDescriptionLabel.isHidden = false
-            default:
-                streamEndView.isHidden = true
-            }
-        } else {
-            streamEndView.isHidden = true
-        }
-        
-        // streamStatus
-        if let streamStatus = streamStatus {
-            switch streamStatus {
-            case .live:
-                streamStateContainer.isHidden = false
-                streamStateContainer.backgroundColor = UIColor(hex: "FF305A")
-                streamStateLabel.text = "LIVE"
-            case .recorded:
-                streamStateContainer.isHidden = false
-                streamStateContainer.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-                streamStateLabel.text = "RECORDED"
-            default:
-                streamStateContainer.isHidden = true
-            }
-        } else {
-            streamStateContainer.isHidden = true
-        }
+        durationView.isHidden = true
         
         // mediaTitle
         if let mediaTitle = mediaTitle {
@@ -197,6 +265,11 @@ class PostGalleryItemCell: UICollectionViewCell, Nibbable {
         } else {
             mediaTitleLabel.isHidden = true
         }
+        
+        // hide Live stream label
+        streamStateContainer.isHidden = true
+        
+        mediaTitleLabel.isHidden = true
         
         darkOverlayView.isHidden = (mediaTitleLabel.isHidden && streamStateContainer.isHidden)
         

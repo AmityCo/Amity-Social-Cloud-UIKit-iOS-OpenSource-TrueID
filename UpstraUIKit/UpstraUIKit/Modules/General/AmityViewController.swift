@@ -94,6 +94,11 @@ open class AmityViewController: UIViewController {
         setupFullWidthBackGesture()
     }
 
+    open override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        updateNavigationBarLayout()
+    }
+
     #if DEBUG
     @objc func titleDoubleTap() {
         navigationController?.popViewController(animated: true)
@@ -125,7 +130,8 @@ open class AmityViewController: UIViewController {
             leftBarButtonItem?.image = AmityIconSet.iconBack
             navigationItem.leftBarButtonItem = leftBarButtonItem
         case .custom:
-            navigationItem.leftBarButtonItem = nil
+            //It call after setup navi in MessageList, so I comment it.
+//            navigationItem.leftBarButtonItem = nil
             break
         }
     }
@@ -187,7 +193,7 @@ open class AmityViewController: UIViewController {
 extension AmityViewController: UIGestureRecognizerDelegate {
     
     open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        let isSystemSwipeToBackEnabled = navigationController?.interactivePopGestureRecognizer?.isEnabled == true
+        let isSystemSwipeToBackEnabled = navigationController?.interactivePopGestureRecognizer?.isEnabled == false
         let isThereStackedViewControllers = navigationController?.viewControllers.count ?? 0 > 1
         return isSystemSwipeToBackEnabled && isThereStackedViewControllers
     }

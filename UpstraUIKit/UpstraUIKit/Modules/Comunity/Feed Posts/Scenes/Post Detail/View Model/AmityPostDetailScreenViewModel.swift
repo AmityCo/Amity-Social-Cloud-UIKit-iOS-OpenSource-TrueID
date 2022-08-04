@@ -85,7 +85,9 @@ extension AmityPostDetailScreenViewModel {
         case .video:
             return AmityPostComponent(component: AmityPostMediaComponent(post: post))
         case .poll:
-            return AmityPostComponent(component: AmityPostPollComponent(post: post))
+            let postPollDataModel = post
+            postPollDataModel.isOpenPageByDetail = true
+            return AmityPostComponent(component: AmityPostPollComponent(post: postPollDataModel))
         case .liveStream:
             return AmityPostComponent(component: AmityPostLiveStreamComponent(post: post))
         case .unknown:
@@ -169,6 +171,9 @@ extension AmityPostDetailScreenViewModel {
         delegate?.screenViewModel(self, didUpdateloadingState: .loaded)
     }
     
+    private func showAlertDialog() {
+        delegate?.screenViewModelDidShowAlertDialog()
+    }
     
     private func loadChild(commentId: String) {
         childrenController.fetchChildren(for: commentId) { [weak self] in
@@ -186,15 +191,19 @@ extension AmityPostDetailScreenViewModel {
     // MARK: Post
     
     func fetchPost() {
-        postController.getPostForPostId(withPostId: postId) { [weak self] (result) in
+        postController.getPostForPostId(withPostId: postId, isPin: false) { [weak self] (result) in
             switch result {
             case .success(let post):
-                self?.post = post
-                self?.debouncer.run {
-                    self?.prepareData()
+                if post.post.isDeleted {
+                    self?.showAlertDialog()
+                } else {
+                    self?.post = post
+                    self?.debouncer.run {
+                        self?.prepareData()
+                    }
                 }
             case .failure:
-                break
+                self?.showAlertDialog()
             }
         }
     }
@@ -237,7 +246,13 @@ extension AmityPostDetailScreenViewModel {
             if success {
                 strongSelf.delegate?.screenViewModelDidLikePost(strongSelf)
             } else {
-                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                switch AmityError(error: error) {
+                case .itemNotFound:
+                    strongSelf.delegate?.screenViewModelDidLikePost(strongSelf)
+                default:
+                    strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                }
+                
             }
         }
     }
@@ -248,7 +263,12 @@ extension AmityPostDetailScreenViewModel {
             if success {
                 strongSelf.delegate?.screenViewModelDidUnLikePost(strongSelf)
             } else {
-                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                switch AmityError(error: error) {
+                case .itemNotFound:
+                    strongSelf.delegate?.screenViewModelDidUnLikePost(strongSelf)
+                default:
+                    strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                }
             }
         }
     }
@@ -260,6 +280,19 @@ extension AmityPostDetailScreenViewModel {
                 NotificationCenter.default.post(name: NSNotification.Name.Post.didDelete, object: nil)
             } else {
                 strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+            }
+        }
+    }
+    
+    func deletePostLiveStream(completion: @escaping(Result<Void,Error>) -> ()) {
+        postController.delete(withPostId: postId, parentId: nil) { [weak self] (success, error) in
+            guard let strongSelf = self else { return }
+            if success {
+                NotificationCenter.default.post(name: NSNotification.Name.Post.didDelete, object: nil)
+                completion(.success(()))
+            } else {
+                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                completion(.success(()))
             }
         }
     }
@@ -281,6 +314,27 @@ extension AmityPostDetailScreenViewModel {
     func createComment(withText text: String, parentId: String?, metadata: [String: Any]?, mentionees: AmityMentioneesBuilder?) {
         commentController.createComment(withReferenceId: postId, referenceType: .post, parentId: parentId, text: text, metadata: metadata, mentionees: mentionees) { [weak self] (comment, error) in
             guard let strongSelf = self else { return }
+            // check if the recent comment is contains banned word
+            // if containts, delete the particular comment
+            //            if let comment = comment, AmityError(error: error) == .bannedWord {
+            //                strongSelf.deleteComment(with: AmityCommentModel(comment: comment))
+            //                strongSelf.fetchComments()
+            //                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: .bannedWord)
+            //            } else {
+            //                strongSelf.delegate?.screenViewModelDidCreateComment(strongSelf)
+            //            }
+            
+            if let comment = comment {
+                if let error = error {
+                    let amityError = AmityError(error: error)
+                    strongSelf.deleteComment(with: AmityCommentModel(comment: comment))
+                    strongSelf.fetchComments()
+                    strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: amityError ?? .unknown)
+                } else {
+                    strongSelf.fetchComments()
+                    strongSelf.delegate?.screenViewModelDidCreateComment(strongSelf, comment: AmityCommentModel(comment: comment))
+                }
+            }
             
             if AmityError(error: error) == .bannedWord {
                 // check if the recent comment is contains banned word
@@ -322,7 +376,12 @@ extension AmityPostDetailScreenViewModel {
             if success {
                 strongSelf.delegate?.screenViewModelDidLikeComment(strongSelf)
             } else {
-                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                switch AmityError(error: error) {
+                case .itemNotFound:
+                    strongSelf.delegate?.screenViewModelDidLikeComment(strongSelf)
+                default:
+                    strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                }
             }
         }
     }
@@ -333,7 +392,12 @@ extension AmityPostDetailScreenViewModel {
             if success {
                 strongSelf.delegate?.screenViewModelDidUnLikeComment(strongSelf)
             } else {
-                strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                switch AmityError(error: error) {
+                case .itemNotFound:
+                    strongSelf.delegate?.screenViewModelDidUnLikeComment(strongSelf)
+                default:
+                    strongSelf.delegate?.screenViewModel(strongSelf, didFinishWithError: AmityError(error: error) ?? .unknown)
+                }
             }
         }
     }

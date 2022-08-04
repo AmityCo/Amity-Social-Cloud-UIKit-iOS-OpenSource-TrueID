@@ -190,7 +190,7 @@ final class AmityCommunityProfileHeaderViewController: UIViewController {
     }
     
     func updatePostsCount() {
-        updatePostLabel(postCount: screenViewModel.dataSource.postCount)
+        updatePostLabel(postCount: screenViewModel.dataSource.community?.postsCount ?? 0)
     }
     
     private func updateActionButton() {
@@ -205,7 +205,8 @@ final class AmityCommunityProfileHeaderViewController: UIViewController {
             actionButton.tag = 0
             actionButton.isHidden = false
         case .member:
-            chatButton.isHidden = settings.shouldChatButtonHide
+//            chatButton.isHidden = settings.shouldChatButtonHide
+            chatButton.isHidden = true
             actionButton.setTitle(AmityLocalizedStringSet.communityDetailMessageButton.localizedString, for: .normal)
             actionButton.setImage(AmityIconSet.iconChat, position: .left)
             actionButton.tintColor = AmityColorSet.secondary
@@ -216,7 +217,8 @@ final class AmityCommunityProfileHeaderViewController: UIViewController {
             actionButton.tag = 1
             actionButton.isHidden = true
         case .admin:
-            chatButton.isHidden = settings.shouldChatButtonHide
+//            chatButton.isHidden = settings.shouldChatButtonHide
+            chatButton.isHidden = true
             actionButton.setTitle(AmityLocalizedStringSet.communityDetailEditProfileButton.localizedString, for: .normal)
             actionButton.setImage(AmityIconSet.iconEdit, position: .left)
             actionButton.tintColor = AmityColorSet.secondary
@@ -262,6 +264,9 @@ private extension AmityCommunityProfileHeaderViewController {
         switch screenViewModel.dataSource.memberStatusCommunity {
         case .guest:
             AmityHUD.show(.loading)
+            guard let commuModel = (screenViewModel.dataSource.community) else { return }
+            let commuModelExternal = AmityCommunityModelExternal(object: commuModel)
+            AmityEventHandler.shared.communityJoinButtonTracking(screenName: ScreenName.communityProfile.rawValue, communityModel: commuModelExternal)
             screenViewModel.action.joinCommunity()
         case .member:
             break

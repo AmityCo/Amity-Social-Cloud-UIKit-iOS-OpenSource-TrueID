@@ -55,7 +55,8 @@ public final class AmityPostFooterTableViewCell: UITableViewCell, Nibbable, Amit
         warningLabel.isHidden = post.isCommentable
         topContainerView.isHidden = isReactionExisted
         
-        shareButton.isHidden = !AmityPostSharePermission.canSharePost(post: post)
+//        shareButton.isHidden = !AmityPostSharePermission.canSharePost(post: post)
+        shareButton.isHidden = !AmityPostSharePermission.canSharePostOnlyPublicCommunity(post: post)
         shareLabel.isHidden = post.sharedCount == 0
         let sharePrefix = post.sharedCount > 1 ? AmityLocalizedStringSet.Unit.sharesPlural.localizedString :
             AmityLocalizedStringSet.Unit.sharesSingular.localizedString
@@ -91,6 +92,7 @@ public final class AmityPostFooterTableViewCell: UITableViewCell, Nibbable, Amit
         likeButton.setTintColor(AmityColorSet.base.blend(.shade2), for: .normal)
         likeButton.setTitleFont(AmityFontSet.bodyBold)
         likeButton.setInsets(forContentPadding: .zero, imageTitlePadding: 4)
+//        likeButton.titleLabel?.numberOfLines = 0
         
         // like badge
         likeLabel.textColor = AmityColorSet.base.blend(.shade2)
@@ -98,12 +100,14 @@ public final class AmityPostFooterTableViewCell: UITableViewCell, Nibbable, Amit
     }
     private func setupCommentButton() {
         // comment button
+        commentButton.setTitle(AmityLocalizedStringSet.General.comment.localizedString, for: .normal)
         commentButton.tintColor = AmityColorSet.base.blend(.shade2)
         commentButton.setTitleColor(AmityColorSet.base.blend(.shade2), for: .normal)
         commentButton.setImage(AmityIconSet.iconComment, for: .normal)
         commentButton.setTintColor(AmityColorSet.base.blend(.shade2), for: .normal)
         commentButton.setTitleFont(AmityFontSet.bodyBold)
         commentButton.setInsets(forContentPadding: .zero, imageTitlePadding: 4)
+//        commentButton.titleLabel?.numberOfLines = 0
         
         // comment badge
         commentLabel.textColor = AmityColorSet.base.blend(.shade2)
@@ -112,9 +116,10 @@ public final class AmityPostFooterTableViewCell: UITableViewCell, Nibbable, Amit
     
     private func setupShareButton() {
         // share button
+        shareButton.setTitle(AmityLocalizedStringSet.General.share.localizedString, for: .normal)
         shareButton.setInsets(forContentPadding: .zero, imageTitlePadding: 4)
         shareButton.setTitleFont(AmityFontSet.bodyBold)
-        
+        shareButton.titleLabel?.numberOfLines = 0
         // share
         shareLabel.textColor = AmityColorSet.base.blend(.shade2)
         shareLabel.font = AmityFontSet.caption

@@ -8,6 +8,8 @@
 
 import UIKit
 import AmitySDK
+import AVFoundation
+import PhotosUI
 
 public protocol AmityMessageListDataSource: AnyObject {
     func cellForMessageTypes() -> [AmityMessageTypes: AmityMessageCellProtocol.Type]
@@ -39,7 +41,7 @@ public extension AmityMessageListViewController {
 }
 
 /// Amity Message List
-public final class AmityMessageListViewController: AmityViewController {
+public final class AmityMessageListViewController: AmityViewController, AmityMessageListHeaderViewDelegate {
     
     public weak var dataSource: AmityMessageListDataSource?
     
@@ -90,6 +92,10 @@ public final class AmityMessageListViewController: AmityViewController {
         
         bottomConstraint.constant = .zero
         view.endEditing(true)
+        DispatchQueue.main.asyncAfter(deadline: .now()) { [weak self] in
+            self?.navigationController?.setNavigationBarHidden(false, animated: false)
+            self?.navigationItem.largeTitleDisplayMode = .never
+        }
     }
     
     public override func viewWillDisappear(_ animated: Bool) {
@@ -129,30 +135,62 @@ public final class AmityMessageListViewController: AmityViewController {
         }
         messageViewController.setupView()
     }
+    
+    func avatarDidTapGesture(userId: String) {
+        AmityEventHandler.shared.userDidTap(from: self, userId: userId)
+    }
 }
 
 // MARK: - Action
 private extension AmityMessageListViewController {
     
     func cameraTap() {
-        #warning("Redundancy: camera picker should be replaced with a singleton class")
-        let cameraPicker = UIImagePickerController()
-        cameraPicker.sourceType = .camera
-        cameraPicker.delegate = self
-        present(cameraPicker, animated: true, completion: nil)
+        checkCameraPermission { [weak self] in
+            guard let strongSelf = self else { return }
+            DispatchQueue.main.async {
+                #warning("Redundancy: camera picker should be replaced with a singleton class")
+                let cameraPicker = UIImagePickerController()
+                cameraPicker.sourceType = .camera
+                cameraPicker.delegate = self
+                strongSelf.present(cameraPicker, animated: true, completion: nil)
+            }
+        } fail: { [weak self] in
+            let alert = UIAlertController(title: "Camera" , message: "Please allow access camera", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .default, handler: { action in
+                //
+            }))
+            alert.addAction(UIAlertAction(title: "Setting", style: .default, handler: { action in
+                UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+            }))
+            self?.present(alert, animated: true, completion: nil)
+        }
     }
     
     func albumTap() {
-        let imagePicker = AmityImagePickerController(selectedAssets: [])
-        imagePicker.settings.theme.selectionStyle = .checked
-        imagePicker.settings.fetch.assets.supportedMediaTypes = [.image]
-        imagePicker.settings.selection.max = 20
-        imagePicker.settings.selection.unselectOnReachingMax = false
-        imagePicker.settings.theme.selectionStyle = .numbered
-        presentImagePicker(imagePicker, select: nil, deselect: nil, cancel: nil, finish: { [weak self] assets in
-            let medias = assets.map { AmityMedia(state: .localAsset($0), type: .image) }
-            self?.screenViewModel.action.send(withMedias: medias)
-        })
+        checkAlbumPermission { [weak self] in
+            guard let strongSelf = self else { return }
+            DispatchQueue.main.async {
+                let imagePicker = AmityImagePickerController(selectedAssets: [])
+                imagePicker.settings.theme.selectionStyle = .checked
+                imagePicker.settings.fetch.assets.supportedMediaTypes = [.image]
+                imagePicker.settings.selection.max = 20
+                imagePicker.settings.selection.unselectOnReachingMax = false
+                imagePicker.settings.theme.selectionStyle = .numbered
+                strongSelf.presentImagePicker(imagePicker, select: nil, deselect: nil, cancel: nil, finish: { [weak self] assets in
+                    let medias = assets.map { AmityMedia(state: .localAsset($0), type: .image) }
+                    self?.screenViewModel.action.send(withMedias: medias)
+                })
+            }
+        } fail: { [weak self]  in
+            let alert = UIAlertController(title: "Photo" , message: "Please allow access photo library", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .default, handler: { action in
+                //
+            }))
+            alert.addAction(UIAlertAction(title: "Setting", style: .default, handler: { action in
+                UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+            }))
+            self?.present(alert, animated: true, completion: nil)
+        }
     }
     
     func fileTap() {
@@ -168,29 +206,33 @@ private extension AmityMessageListViewController {
 private extension AmityMessageListViewController {
     
     func setupView() {
+        setupCustomNavigationBar()
         view.backgroundColor = AmityColorSet.backgroundColor
         setRefreshOverlay(visible: false)
-        setupCustomNavigationBar()
         setupMessageContainer()
         setupComposeBarContainer()
         setupAudioRecordingView()
     }
     
     func setupCustomNavigationBar() {
-        if settings.shouldShowChatSettingBarButton {
-            // Just using the view form this
-            navigationBarType = .custom
-            navigationHeaderViewController = AmityMessageListHeaderView(viewModel: screenViewModel)
-            let item = UIBarButtonItem(customView: navigationHeaderViewController)
-            navigationItem.leftBarButtonItem = item
-            let image = AmityIconSet.Chat.iconSetting
-            let barButton = UIBarButtonItem(image: image,
-                                            style: .plain,
-                                            target: self,
-                                            action: #selector(didTapSetting))
-            navigationItem.rightBarButtonItem = barButton
+        navigationBarType = .custom
+        navigationHeaderViewController = AmityMessageListHeaderView(viewModel: screenViewModel)
+        navigationHeaderViewController.delegate = self
+        let headerType: AmityNavigationBarType
+        if navigationController?.viewControllers.count ?? 0 <= 1 {
+            if presentingViewController != nil {
+                headerType = .present
+            } else {
+                headerType = .push
+            }
+        } else {
+            headerType = .push
         }
+        navigationHeaderViewController.amityNavigationBarType = headerType
+        let item = UIBarButtonItem(customView: navigationHeaderViewController)
+        navigationItem.leftBarButtonItem = item
     }
+    
     
     func setupConnectionStatusBar() {
         
@@ -337,6 +379,59 @@ private extension AmityMessageListViewController {
         
     }
     
+    // MARK: - Permission Check
+    func checkCameraPermission(success: @escaping() -> (), fail: @escaping() -> ()){
+        
+        let cameraAuthorization = AVCaptureDevice.authorizationStatus(for: .video)
+        
+        switch cameraAuthorization {
+        case .authorized:
+            success()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                if granted {
+                    success()
+                }
+            }
+        case .restricted:
+            break
+        case .denied:
+            fail()
+            break
+        @unknown default:
+            fail()
+            break
+        }
+    }
+    
+    func checkAlbumPermission(success: @escaping() -> (), fail: @escaping() -> ()){
+        
+        let photoAuthorization = PHPhotoLibrary.authorizationStatus()
+        
+        switch photoAuthorization {
+        case .authorized:
+            success()
+            break
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization({
+                (newStatus) in
+                if newStatus == PHAuthorizationStatus.authorized {
+                    success()
+                }
+            })
+        case .restricted:
+            break
+        case .denied:
+            fail()
+            break
+        case .limited:
+            fail()
+            break
+        @unknown default:
+            fail()
+            break
+        }
+    }
 }
 
 // MARK: - Binding ViewModel
@@ -345,6 +440,7 @@ private extension AmityMessageListViewController {
         screenViewModel.delegate = self
         screenViewModel.action.getChannel()
     }
+    
 }
 
 extension AmityMessageListViewController: AmityKeyboardServiceDelegate {
@@ -419,6 +515,8 @@ extension AmityMessageListViewController: AmityMessageListScreenViewModelDelegat
         switch route {
         case .pop:
             navigationController?.popViewController(animated: true)
+        case .dissmiss:
+            navigationController?.dismiss(animated: true, completion: nil)
         }
     }
     
@@ -428,6 +526,7 @@ extension AmityMessageListViewController: AmityMessageListScreenViewModelDelegat
     
     func screenViewModelDidGetChannel(channel: AmityChannelModel) {
         navigationHeaderViewController?.updateViews(channel: channel)
+        screenViewModel.action.shouldScrollToBottom(force: false)
     }
     
     func screenViewModelScrollToBottom(for indexPath: IndexPath) {
@@ -473,20 +572,31 @@ extension AmityMessageListViewController: AmityMessageListScreenViewModelDelegat
             self.messageViewController.tableView.setContentOffset(CGPoint(x: 0, y: newOffset), animated: false)
             
         case .didSendText:
-            screenViewModel.shouldScrollToBottom(force: true)
+            composeBar.clearText()
+            screenViewModelScrollTableviewToLastIndex()
         case .didEditText:
             break
         case .didDelete(let indexPath):
+            AmityHUD.hide()
             messageViewController.tableView.reloadRows(at: [indexPath], with: .none)
         case .didSendImage:
+            screenViewModelScrollTableviewToLastIndex()
             break
         case .didUploadImage:
+            screenViewModelScrollTableviewToLastIndex()
             break
         case .didDeeleteErrorMessage:
             AmityHUD.show(.success(message: AmityLocalizedStringSet.HUD.delete.localizedString))
         case .didSendAudio:
             circular.hide()
             audioRecordingViewController?.stopRecording()
+            screenViewModelScrollTableviewToLastIndex()
+        }
+    }
+    
+    func screenViewModelScrollTableviewToLastIndex() {
+        if let lastIndexPath = messageViewController.tableView.lastIndexPath {
+            messageViewController.tableView.scrollToRow(at: lastIndexPath, at: .bottom, animated: false)
         }
     }
     
@@ -512,6 +622,8 @@ extension AmityMessageListViewController: AmityMessageListScreenViewModelDelegat
             guard let message = screenViewModel.dataSource.message(at: indexPath) else { return }
             let alertViewController = UIAlertController(title: AmityLocalizedStringSet.MessageList.alertDeleteTitle.localizedString,
                                                         message: AmityLocalizedStringSet.MessageList.alertDeleteDesc.localizedString, preferredStyle: .alert)
+            alertViewController.setTitle(font: AmityFontSet.title)
+            alertViewController.setMessage(font: AmityFontSet.body)
             let cancel = UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil)
             let delete = UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive, handler: { [weak self] _ in
                 self?.screenViewModel.action.delete(withMessage: message, at: indexPath)
@@ -520,9 +632,12 @@ extension AmityMessageListViewController: AmityMessageListScreenViewModelDelegat
             alertViewController.addAction(delete)
             present(alertViewController, animated: true)
         case .deleteErrorMessage(let indexPath):
+            self.view.endEditing(true)
             guard let message = screenViewModel.dataSource.message(at: indexPath) else { return }
             let alertViewController = UIAlertController(title: AmityLocalizedStringSet.MessageList.alertErrorMessageTitle.localizedString,
                                                         message: nil, preferredStyle: .actionSheet)
+            alertViewController.setTitle(font: AmityFontSet.title)
+            alertViewController.setMessage(font: AmityFontSet.body)
             let cancel = UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil)
             let delete = UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive, handler: { [weak self] _ in
                 self?.screenViewModel.action.deleteErrorMessage(with: message.messageId, at: indexPath)

@@ -33,6 +33,10 @@ open class AmityPostDetailViewController: AmityViewController {
     private var expandedIds: [String] = []
     private var showReplyIds: [String] = []
     private var mentionManager: AmityMentionManager?
+    private var isFromEditTextViewController: Bool = false
+    private var editTextViewController: AmityEditTextViewController?
+    
+    private var isEverFetch: Bool = false
     
     private var parentComment: AmityCommentModel? {
         didSet {
@@ -77,6 +81,8 @@ open class AmityPostDetailViewController: AmityViewController {
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setBackgroundColor(with: .white)
+        navigationController?.setNavigationBarHidden(false, animated: true)
+        navigationItem.largeTitleDisplayMode = .never
         AmityKeyboardService.shared.delegate = self
         mentionManager?.delegate = self
         mentionManager?.setColor(AmityColorSet.base, highlightColor: AmityColorSet.primary)
@@ -113,6 +119,7 @@ open class AmityPostDetailViewController: AmityViewController {
     // MARK: Setup views
     private func setupView() {
         view.backgroundColor = AmityColorSet.backgroundColor
+        tableView.isHidden = true
     }
     
     private func setupNavigationBar() {
@@ -171,10 +178,22 @@ open class AmityPostDetailViewController: AmityViewController {
             let deleteOption = TextItemOption(title: AmityLocalizedStringSet.PostDetail.deletePost.localizedString) { [weak self] in
                 // delete option
                 let alert = UIAlertController(title: AmityLocalizedStringSet.PostDetail.deletePostTitle.localizedString, message: AmityLocalizedStringSet.PostDetail.deletePostMessage.localizedString, preferredStyle: .alert)
+                alert.setTitle(font: AmityFontSet.title)
+                alert.setMessage(font: AmityFontSet.body)
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil))
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive, handler: { [weak self] _ in
-                    self?.screenViewModel.deletePost()
-                    self?.navigationController?.popViewController(animated: true)
+                    if self?.navigationController?.viewControllers.count ?? 0 <= 1 {
+                        if self?.presentingViewController != nil {
+                            AmityHUD.show(.loading)
+                            self?.screenViewModel.deletePostLiveStream(completion: { [weak self] _ in
+                                AmityHUD.hide()
+                                self?.didTapLeftBarButton()
+                            })
+                        }
+                    } else {
+                        self?.screenViewModel.deletePost()
+                        self?.navigationController?.popViewController(animated: true)
+                    }
                 }))
                 self?.present(alert, animated: true, completion: nil)
             }
@@ -199,8 +218,12 @@ open class AmityPostDetailViewController: AmityViewController {
                     })
                     AmityAlertController.present(title: AmityLocalizedStringSet.Poll.Option.alertDeleteTitle.localizedString, message: AmityLocalizedStringSet.Poll.Option.alertDeleteDesc.localizedString, actions: [cancel, delete], from: strongSelf)
                 }
-                
-                contentView.configure(items: [closePoll, deletePoll], selectedItem: nil)
+                if (post.poll?.isClosed ?? false) {
+                    contentView.configure(items: [deletePoll], selectedItem: nil)
+                } else {
+                    contentView.configure(items: [closePoll, deletePoll], selectedItem: nil)
+                }
+//                contentView.configure(items: [closePoll, deletePoll], selectedItem: nil)
             case .file, .image, .text, .video, .unknown:
                 contentView.configure(items: [editOption, deleteOption], selectedItem: nil)
             case .liveStream:
@@ -239,6 +262,10 @@ open class AmityPostDetailViewController: AmityViewController {
         commentComposeBarView.resetState()
         mentionManager?.resetState()
     }
+    @objc func dissmissVC() {
+        self.didTapLeftBarButton()
+    }
+    
 }
 
 // MARK: - AmityPostTableViewDelegate
@@ -349,6 +376,10 @@ extension AmityPostDetailViewController: AmityPostDetailScreenViewModelDelegate 
         }
         
         setupMentionManager()
+        if viewModel.post?.dataTypeInternal != .poll {
+        }
+        
+        tableView.isHidden = false
     }
     
     func screenViewModelDidUpdatePost(_ viewModel: AmityPostDetailScreenViewModelType) {
@@ -384,9 +415,34 @@ extension AmityPostDetailViewController: AmityPostDetailScreenViewModelDelegate 
         present(bottomSheet, animated: false, completion: nil)
     }
     
+    func screenViewModelDidShowAlertDialog() {
+        if !isEverFetch {
+            let firstAction = AmityDefaultModalModel.Action(title: AmityLocalizedStringSet.General.ok,
+                                                            textColor: UIColor.white,
+                                                            backgroundColor: UIColor.black)
+            
+            let communityPostModel = AmityDefaultModalModel(image: AmityIconSet.iconNotFound,
+                                                            title: AmityLocalizedStringSet.Modal.contentNotfoundTitle,
+                                                            description: AmityLocalizedStringSet.Modal.contentNotfoundDesc,
+                                                            firstAction: firstAction, secondAction: nil,
+                                                            layout: .single)
+            let communityPostModalView = AmityDefaultModalView.make(content: communityPostModel)
+            communityPostModalView.firstActionHandler = {
+                AmityHUD.hide { [weak self] in
+                    self?.navigationController?.popViewController(animated: true)
+                }
+            }
+            
+            AmityHUD.show(.custom(view: communityPostModalView))
+            isEverFetch = true
+        }
+    }
     // MARK: - Comment
     func screenViewModelDidCreateComment(_ viewModel: AmityPostDetailScreenViewModelType, comment: AmityCommentModel) {
-        
+        // Do something with success
+        if isFromEditTextViewController {
+            editTextViewController?.dismiss(animated: true, completion: nil)
+        }
         if comment.parentId == nil {
             // When new parent comment is created, it will not show in query stream.
             // We forcibly fetch a comment list to include new added comments.
@@ -435,13 +491,11 @@ extension AmityPostDetailViewController: AmityPostDetailScreenViewModelDelegate 
     }
     
     func screenViewModel(_ viewModel: AmityPostDetailScreenViewModelType, didFinishWithError error: AmityError) {
-        switch error {
-        case .unknown:
-            AmityHUD.show(.error(message: AmityLocalizedStringSet.HUD.somethingWentWrong.localizedString))
-        case .bannedWord:
-            AmityHUD.show(.error(message: AmityLocalizedStringSet.PostDetail.banndedCommentErrorMessage.localizedString))
-        default:
-            break
+        if isFromEditTextViewController {
+//            editTextViewController?.handleCreatePostError(error)
+            handleCreatePostError(error)
+        } else {
+            handleCreatePostError(error)
         }
     }
     
@@ -467,8 +521,11 @@ extension AmityPostDetailViewController: AmityPostHeaderProtocolHandlerDelegate 
     
 }
 
+
+
 // MARK: - AmityPostProtocolHandlerDelegate
 extension AmityPostDetailViewController: AmityPostProtocolHandlerDelegate {
+    
     func amityPostProtocolHandlerDidTapSubmit(_ cell: AmityPostProtocol) {
         if let cell = cell as? AmityPostPollTableViewCell {
             screenViewModel.action.vote(withPollId: cell.post?.poll?.id, answerIds: cell.selectedAnswerIds)
@@ -492,6 +549,10 @@ extension AmityPostDetailViewController: AmityPostFooterProtocolHandlerDelegate 
             parentComment = nil
             if post.isGroupMember {
                 _ = commentComposeBarView.becomeFirstResponder()
+            }
+        case .tapShare:
+            if let communityId = post.communityId {
+                AmityEventHandler.shared.shareCommunityPostDidTap(from: self, title: nil, postId: post.postId, communityId: communityId)
             }
         }
     }
@@ -526,6 +587,8 @@ extension AmityPostDetailViewController: AmityPostDetailCompostViewDelegate {
             let alertTitle = (self?.parentComment == nil) ? AmityLocalizedStringSet.PostDetail.discardCommentTitle.localizedString : AmityLocalizedStringSet.PostDetail.discardReplyTitle.localizedString
             let alertMessage = (self?.parentComment == nil) ? AmityLocalizedStringSet.PostDetail.discardCommentMessage.localizedString : AmityLocalizedStringSet.PostDetail.discardReplyMessage.localizedString
             let alertController = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
+            alertController.setTitle(font: AmityFontSet.title)
+            alertController.setMessage(font: AmityFontSet.body)
             let cancelAction = UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil)
             let discardAction = UIAlertAction(title: AmityLocalizedStringSet.General.discard.localizedString, style: .destructive) { _ in
                 editTextViewController?.dismiss(animated: true, completion: nil)
@@ -678,6 +741,8 @@ extension AmityPostDetailViewController: AmityCommentTableViewCellDelegate {
                     let alertTitle = comment.isParent ? AmityLocalizedStringSet.PostDetail.discardCommentTitle.localizedString : AmityLocalizedStringSet.PostDetail.discardReplyTitle.localizedString
                     let alertMessage = comment.isParent ? AmityLocalizedStringSet.PostDetail.discardEditedCommentMessage.localizedString : AmityLocalizedStringSet.PostDetail.discardEditedReplyMessage.localizedString
                     let alertController = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
+                    alertController.setTitle(font: AmityFontSet.title)
+                    alertController.setMessage(font: AmityFontSet.body)
                     let cancelAction = UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil)
                     let discardAction = UIAlertAction(title: AmityLocalizedStringSet.General.discard.localizedString, style: .destructive) { _ in
                         editTextViewController?.dismiss(animated: true, completion: nil)
@@ -694,6 +759,8 @@ extension AmityPostDetailViewController: AmityCommentTableViewCellDelegate {
                 let alertTitle = comment.isParent ? AmityLocalizedStringSet.PostDetail.deleteCommentTitle.localizedString : AmityLocalizedStringSet.PostDetail.deleteReplyTitle.localizedString
                 let alertMessage = comment.isParent ? AmityLocalizedStringSet.PostDetail.deleteCommentMessage.localizedString : AmityLocalizedStringSet.PostDetail.deleteReplyMessage.localizedString
                 let alert = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
+                alert.setTitle(font: AmityFontSet.title)
+                alert.setMessage(font: AmityFontSet.body)
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.cancel.localizedString, style: .cancel, handler: nil))
                 alert.addAction(UIAlertAction(title: AmityLocalizedStringSet.General.delete.localizedString, style: .destructive) { [weak self] _ in
                     self?.screenViewModel.action.deleteComment(with: comment)
@@ -761,6 +828,7 @@ extension AmityPostDetailViewController: AmityMentionManagerDelegate {
             mentionTableView.isHidden = false
             mentionTableView.reloadData()
         }
+//        mentionTableView.isHidden = true
     }
     
     public func didMentionsReachToMaximumLimit() {
@@ -774,4 +842,35 @@ extension AmityPostDetailViewController: AmityMentionManagerDelegate {
     public func didCharactersReachToMaximumLimit() {
         showAlertForMaximumCharacters()
     }
+}
+
+
+// MARK: handle popup
+extension AmityPostDetailViewController {
+    
+    private func handleCreatePostError(_ error: AmityError) {
+        switch error {
+        case .bannedWord:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageCommentBanword.localizedString
+            let title = AmityLocalizedStringSet.ErrorHandling.errorMessageTitle.localizedString
+            showError(title: title, message: message)
+        case .linkNotAllowed:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageLinkNotAllowedDetail.localizedString
+            let title = AmityLocalizedStringSet.ErrorHandling.errorMessageLinkNotAllowed.localizedString
+            showError(title: title, message: message)
+        case .userIsBanned, .userIsGlobalBanned:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageUserIsBanned.localizedString
+            showError(title: "", message: message)
+        default:
+            let message = AmityLocalizedStringSet.ErrorHandling.errorMessageDefault.localizedString + " (\(error.rawValue))"
+            showError(title: "", message: message)
+        }
+    }
+    
+    private func showError(title: String, message: String) {
+        AmityUtilities.showAlert(title: title, message: message, viewController: self) { _ in
+            
+        }
+    }
+    
 }

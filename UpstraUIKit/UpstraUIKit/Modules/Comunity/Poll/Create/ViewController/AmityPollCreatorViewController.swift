@@ -31,6 +31,8 @@ public final class AmityPollCreatorViewController: AmityViewController {
     private var postButton: UIBarButtonItem?
     private var screenViewModel: AmityPollCreatorScreenViewModelType?
     private var mentionManager: AmityMentionManager?
+    private var postType: PostFromTodayType? = nil
+    
     
     // MARK: - View's lifecycle
     public override func viewDidLoad() {
@@ -43,11 +45,29 @@ public final class AmityPollCreatorViewController: AmityViewController {
         
         mentionManager?.delegate = self
         AmityKeyboardService.shared.delegate = self
+        screenViewModel?.maxAnswers = AmityPollCreatorConstant.optionMax
     }
     
     public static func make(postTarget: AmityPostTarget) -> AmityPollCreatorViewController {
         let viewModel = AmityPollCreatorScreenViewModel(postTarget: postTarget)
         let vc = AmityPollCreatorViewController(nibName: AmityPollCreatorViewController.identifier, bundle: AmityUIKitManager.bundle)
+        vc.screenViewModel = viewModel
+        var communityId: String? = nil
+        switch postTarget {
+        case .community(let object):
+            if !object.isPublic {
+                communityId = object.communityId
+            }
+        default: break
+        }
+        vc.mentionManager = AmityMentionManager(withType: .post(communityId: communityId))
+        return vc
+    }
+    
+    public static func make(postTarget: AmityPostTarget, postType: PostFromTodayType) -> AmityPollCreatorViewController {
+        let viewModel = AmityPollCreatorScreenViewModel(postTarget: postTarget)
+        let vc = AmityPollCreatorViewController(nibName: AmityPollCreatorViewController.identifier, bundle: AmityUIKitManager.bundle)
+        vc.postType = postType
         vc.screenViewModel = viewModel
         var communityId: String? = nil
         switch postTarget {
@@ -148,6 +168,17 @@ extension AmityPollCreatorViewController: AmityPollCreatorScreenViewModelDelegat
             postButton?.isEnabled = true
             dismiss(animated: true, completion: nil)
         }
+        
+        //If post from 'Today' page. Tell client to redirect
+        if postType != nil {
+            let userId = AmityUIKitManagerInternal.shared.currentUserId
+            if error == nil {
+                AmityEventHandler.shared.finishPostEvent(true, userId: userId)
+            } else {
+                AmityEventHandler.shared.finishPostEvent(false, userId: userId)
+            }
+        }
+        
     }
     
     func screenViewModelCanPost(_ isEnabled: Bool) {
@@ -255,6 +286,7 @@ extension AmityPollCreatorViewController: UITableViewDataSource {
             let cell: AmityPollCreatorAddOptionTableViewCell = tableView.dequeueReusableCell(for: indexPath)
             cell.delegate = self
             cell.indexPath = indexPath
+            screenViewModel?.answersItem.count == AmityPollCreatorConstant.optionMax ? cell.updateAddAnswerOptionButton(isMaxAnswer:  true) : cell.updateAddAnswerOptionButton(isMaxAnswer: false)
             return cell
         case .multipleSeaction:
             let cell: AmityPollCreatorMultipleSelectionTableViewCell = tableView.dequeueReusableCell(for: indexPath)
@@ -314,7 +346,6 @@ extension AmityPollCreatorViewController: AmityPollCreatorCellProtocolDelegate {
                 let section = Section.answers.rawValue
                 let answerCount = self?.screenViewModel?.answersItem.count ?? 0
                 let row = answerCount > 0 ? answerCount - 1 : 0
-                
                 // We don't want keyboard to disappear when new option is added
                 // so we manually reload the rows added.
                 let insertIndexPath = IndexPath(row: row, section: section)
@@ -322,6 +353,14 @@ extension AmityPollCreatorViewController: AmityPollCreatorCellProtocolDelegate {
                 
                 if let cell = tableView.cellForRow(at: insertIndexPath) as? AmityPollCreatorAnswerTableViewCell {
                     cell.moveInputCursorToTextView()
+                }
+                
+                self?.tableView.scrollToRow(at: insertIndexPath, at: .top, animated: true)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    let indexPath = IndexPath(item: 0, section: section + 1)
+                    self?.tableView.reloadRows(at: [indexPath], with: .none)
+                    self?.tableView.reloadRows(at: [IndexPath.init(row: 0, section: 1)], with: .none)
                 }
             }
         case let .updateAnswerOption(text):
@@ -359,6 +398,7 @@ extension AmityPollCreatorViewController: AmityMentionManagerDelegate {
             mentionTableView.isHidden = false
             mentionTableView.reloadData()
         }
+//        mentionTableView.isHidden = true
     }
     
     public func didMentionsReachToMaximumLimit() {

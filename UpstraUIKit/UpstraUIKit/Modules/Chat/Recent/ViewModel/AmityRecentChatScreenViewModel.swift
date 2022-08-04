@@ -20,6 +20,7 @@ public struct AmityChannelModel {
     let avatarFileId: String?
     let participation: AmityChannelParticipation
     let metadata: [String:Any]
+    var recentMessage: String
     
     init(object: AmityChannel) {
         self.channelId = object.channelId
@@ -32,6 +33,7 @@ public struct AmityChannelModel {
         self.channelType = object.channelType
         self.avatarFileId = object.getAvatarInfo()?.fileURL
         self.metadata = object.metadata ?? [:]
+        self.recentMessage = AmityLocalizedStringSet.RecentMessage.noMessage.localizedString
     }
     
     var isConversationChannel: Bool {
@@ -49,6 +51,26 @@ public struct AmityChannelModel {
         return ""
     }
 }
+
+class RecentChatAvatarArray {
+    static var shared = RecentChatAvatarArray()
+    var avatarArray: [RecentChatAvatar] = []
+}
+
+struct RecentChatAvatar {
+    let channelId: String
+    let avatarURL: String
+    let displayName: String
+    let isCustom: Bool
+    
+    init(channelId: String, avatarURL: String, displayName: String, isCustom: Bool){
+        self.channelId = channelId
+        self.avatarURL = avatarURL
+        self.displayName = displayName
+        self.isCustom = isCustom
+    }
+}
+
 
 final class AmityRecentChatScreenViewModel: AmityRecentChatScreenViewModelType {
     weak var delegate: AmityRecentChatScreenViewModelDelegate?
@@ -76,6 +98,8 @@ final class AmityRecentChatScreenViewModel: AmityRecentChatScreenViewModelType {
     init(channelType: AmityChannelType) {
         self.channelType = channelType
         channelRepository = AmityChannelRepository(client: AmityUIKitManagerInternal.shared.client)
+        
+        RecentChatAvatarArray.shared.avatarArray = []
     }
     
     required init?(coder: NSCoder) {
@@ -239,6 +263,7 @@ private extension AmityRecentChatScreenViewModel {
         case .conversation:
             let query = AmityChannelQuery()
             query.types = [AmityChannelQueryType.conversation]
+            query.filter = .userIsMember
             query.includeDeleted = false
             channelsCollection = channelRepository.getChannels(with: query)
         default:
@@ -261,8 +286,56 @@ private extension AmityRecentChatScreenViewModel {
             _channels.append(model)
         }
         channels = _channels
+        
+        for (index, channel) in channels.enumerated() {
+            getRecentMessage(channelModel: channel, index: index) { [weak self] (model, index) in
+                self?.channels[index] = model
+            }
+        }
+        
         delegate?.screenViewModelLoadingState(for: .loaded)
         delegate?.screenViewModelDidGetChannel()
         delegate?.screenViewModelEmptyView(isEmpty: channels.isEmpty)
+    }
+    
+    private func getRecentMessage(channelModel: AmityChannelModel, index: Int, completion: @escaping(_ amityChannelModel: AmityChannelModel, _ index: Int) -> Void ){
+            
+        var currentChannekModel = channelModel
+        let recentMessage = channelModel.metadata["latestMessageNonBlock"] as? [[String:Any]] ?? []
+        //If no message yet
+        if recentMessage.isEmpty {
+            completion(currentChannekModel, index)
+            return
+        }
+        
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        do {
+            let recentJsonData = try JSONSerialization.data(withJSONObject: recentMessage, options: .prettyPrinted)
+            var recentArray = try decoder.decode([AmityRecentMessageModel].self, from: recentJsonData)
+            recentArray = recentArray.sorted(by: {$0.channelSegment! > $1.channelSegment!})
+            for recentMsg in recentArray {
+                switch AmityUIKitManagerInternal.shared.amityLanguage {
+                    case "th":
+                    if recentMsg.userId == AmityUIKitManagerInternal.shared.currentUserId{
+                        currentChannekModel.recentMessage = recentMsg.asOwnerMessageTH ?? AmityLocalizedStringSet.RecentMessage.noMessage.localizedString
+                    } else {
+                        currentChannekModel.recentMessage = recentMsg.asReceiverMessageTH ?? AmityLocalizedStringSet.RecentMessage.noMessage.localizedString
+                    }
+                    default:
+                    if recentMsg.userId == AmityUIKitManagerInternal.shared.currentUserId{
+                        currentChannekModel.recentMessage = recentMsg.asOwnerMessageEN ?? AmityLocalizedStringSet.RecentMessage.noMessage.localizedString
+                    } else {
+                        currentChannekModel.recentMessage = recentMsg.asReceiverMessageEN ?? AmityLocalizedStringSet.RecentMessage.noMessage.localizedString
+                    }
+                }
+                break
+            }
+            completion(currentChannekModel, index)
+        } catch let error {
+            print("[AmitySDK - Recent chat] Empty recent message.")
+        }
+        
+        
     }
 }
